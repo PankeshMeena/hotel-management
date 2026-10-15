@@ -25,7 +25,7 @@ export const Login: React.FC = () => {
 
       if (result.success) {
         success(result.message, 'Signed In Successfully');
-        navigate('/dashboard');
+        navigate('/reservations');
       } else {
         error(result.message, 'Authentication Failed');
       }

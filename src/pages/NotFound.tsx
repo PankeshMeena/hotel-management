@@ -24,10 +24,10 @@ export const NotFound: React.FC = () => {
           <ArrowLeft className="w-3.5 h-3.5" /> Go Back
         </button>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/reservations')}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-xs"
         >
-          <Home className="w-3.5 h-3.5" /> Return to Dashboard
+          <Home className="w-3.5 h-3.5" /> Return to Reservations
         </button>
       </div>
     </div>

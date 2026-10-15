@@ -47,11 +47,18 @@ export const Reservations: React.FC = () => {
   const filteredReservations = useMemo(() => {
     return reservations
       .filter(r => {
+        const assignedRooms = r.assignedRoomNumbers && r.assignedRoomNumbers.length > 0
+          ? r.assignedRoomNumbers.join(', ')
+          : r.roomNumber;
+
+        const memberNames = r.members ? r.members.map(m => `${m.name} ${m.surname}`).join(' ').toLowerCase() : '';
+
         const matchesSearch =
           r.guestName.toLowerCase().includes(search.toLowerCase()) ||
           r.id.toLowerCase().includes(search.toLowerCase()) ||
           r.guestMobile.includes(search) ||
-          r.roomNumber.includes(search);
+          assignedRooms.includes(search) ||
+          memberNames.includes(search.toLowerCase());
 
         const matchesStatus = statusFilter === 'All' || r.status === statusFilter;
         const matchesSource = sourceFilter === 'All' || r.bookingSource === sourceFilter;
@@ -139,9 +146,9 @@ export const Reservations: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Search */}
           <div className="relative w-full sm:w-64">
@@ -176,8 +183,8 @@ export const Reservations: React.FC = () => {
             <option value="No Show">No Show</option>
           </select>
 
-          {/* Source Filter */}
-          <select
+          {/* Source Filter (commented out) */}
+          {/* <select
             value={sourceFilter}
             onChange={e => {
               setSourceFilter(e.target.value);
@@ -192,7 +199,7 @@ export const Reservations: React.FC = () => {
             <option value="Booking.com">Booking.com</option>
             <option value="MakeMyTrip">MakeMyTrip</option>
             <option value="Agoda">Agoda</option>
-          </select>
+          </select> */}
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
@@ -220,7 +227,7 @@ export const Reservations: React.FC = () => {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-500 text-[10px] uppercase tracking-wider">
                 <th
-                  className="py-3 px-4 cursor-pointer hover:text-slate-900"
+                  className="py-2.5 px-3 cursor-pointer hover:text-slate-900 whitespace-nowrap"
                   onClick={() => {
                     setSortField('id');
                     setSortAsc(!sortAsc);
@@ -231,7 +238,7 @@ export const Reservations: React.FC = () => {
                   </div>
                 </th>
                 <th
-                  className="py-3 px-4 cursor-pointer hover:text-slate-900"
+                  className="py-2.5 px-3 cursor-pointer hover:text-slate-900 whitespace-nowrap"
                   onClick={() => {
                     setSortField('guestName');
                     setSortAsc(!sortAsc);
@@ -241,9 +248,9 @@ export const Reservations: React.FC = () => {
                     Guest Information <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="py-3 px-4">Room</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Room</th>
                 <th
-                  className="py-3 px-4 cursor-pointer hover:text-slate-900"
+                  className="py-2.5 px-3 cursor-pointer hover:text-slate-900 whitespace-nowrap"
                   onClick={() => {
                     setSortField('checkInDate');
                     setSortAsc(!sortAsc);
@@ -253,10 +260,10 @@ export const Reservations: React.FC = () => {
                     Dates & Nights <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="py-3 px-4">Source</th>
-                <th className="py-3 px-4">Status</th>
+                {/* <th className="py-2.5 px-3 whitespace-nowrap">Source</th> */}
+                <th className="py-2.5 px-3 whitespace-nowrap">Status</th>
                 <th
-                  className="py-3 px-4 text-right cursor-pointer hover:text-slate-900"
+                  className="py-2.5 px-3 text-right cursor-pointer hover:text-slate-900 whitespace-nowrap"
                   onClick={() => {
                     setSortField('totalAmount');
                     setSortAsc(!sortAsc);
@@ -266,50 +273,65 @@ export const Reservations: React.FC = () => {
                     Total Amount <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="py-3 px-4 text-right">Balance</th>
-                <th className="py-3 px-4 text-center">Actions</th>
+                <th className="py-2.5 px-3 text-right whitespace-nowrap">Balance</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paginatedReservations.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-10 text-slate-400">
+                  <td colSpan={8} className="text-center py-8 text-slate-400">
                     No reservations found matching active filters.
                   </td>
                 </tr>
               ) : (
                 paginatedReservations.map(res => (
                   <tr key={res.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3 px-4 font-bold text-slate-900">{res.id}</td>
-                    <td className="py-3 px-4">
-                      <p className="font-semibold text-slate-800">{res.guestName}</p>
-                      <p className="text-[11px] text-slate-400">{maskPhoneNumber(res.guestMobile)}</p>
+                    <td className="py-2.5 px-3 font-bold text-slate-900 whitespace-nowrap">{res.id}</td>
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <p className="font-semibold text-slate-800 leading-tight">{res.guestName}</p>
+                      <p className="text-[11px] text-slate-400 leading-tight">{maskPhoneNumber(res.guestMobile)}</p>
+                      {res.members && res.members.length > 1 && (
+                        <span className="inline-block text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-medium mt-0.5">
+                          {res.members.length} Members Registered
+                        </span>
+                      )}
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                        Room {res.roomNumber}
-                      </span>
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-1">
+                        {(res.assignedRoomNumbers && res.assignedRoomNumbers.length > 0
+                          ? res.assignedRoomNumbers
+                          : [res.roomNumber]
+                        ).map(rm => (
+                          <span
+                            key={rm}
+                            className="inline-flex items-center whitespace-nowrap font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 text-[11px]"
+                          >
+                            Room {rm}
+                          </span>
+                        ))}
+                      </div>
                     </td>
-                    <td className="py-3 px-4 text-slate-600">
-                      <div>
+                    <td className="py-2.5 px-3 whitespace-nowrap text-slate-600">
+                      <div className="font-medium text-slate-700 leading-tight">
                         {formatDate(res.checkInDate)} → {formatDate(res.checkOutDate)}
                       </div>
-                      <span className="text-[10px] text-slate-400">{res.numberOfNights} Night(s)</span>
+                      <span className="text-[10px] text-slate-400 leading-tight">{res.numberOfNights} Night(s)</span>
                     </td>
-                    <td className="py-3 px-4 text-slate-600">{res.bookingSource}</td>
-                    <td className="py-3 px-4">
+                    {/* <td className="py-2.5 px-3 text-slate-600">{res.bookingSource}</td> */}
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       <ReservationStatusBadge status={res.status} />
                     </td>
-                    <td className="py-3 px-4 text-right font-medium text-slate-900">
+                    <td className="py-2.5 px-3 text-right font-medium text-slate-900 whitespace-nowrap">
                       {formatCurrency(res.totalAmount, hotelSettings.currencySymbol)}
                     </td>
-                    <td className="py-3 px-4 text-right font-bold">
+                    <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
                       <span className={res.balanceAmount > 0 ? 'text-amber-700' : 'text-emerald-700'}>
                         {formatCurrency(res.balanceAmount, hotelSettings.currencySymbol)}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                         {/* View Voucher */}
                         <button
                           onClick={() => {
@@ -335,7 +357,7 @@ export const Reservations: React.FC = () => {
                         {(res.status === 'Confirmed' || res.status === 'Pending') && (
                           <button
                             onClick={() => handleCheckInClick(res.id)}
-                            className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-2 py-1 rounded text-[11px] transition shadow-xs"
+                            className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-2 py-1 rounded text-[11px] transition shadow-xs whitespace-nowrap"
                             title="Check-in guest now"
                           >
                             Check In

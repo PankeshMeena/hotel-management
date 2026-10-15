@@ -32,7 +32,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 // Root index redirect
 const RootRedirect: React.FC = () => {
   const { currentUser } = useHotel();
-  return currentUser ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+  return currentUser ? <Navigate to="/reservations" replace /> : <Navigate to="/login" replace />;
 };
 
 function AppRoutes() {
@@ -49,10 +49,11 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Navigate to="/reservations" replace />} />
         <Route path="/reservations" element={<Reservations />} />
         <Route path="/front-desk" element={<FrontDesk />} />
-        <Route path="/guests" element={<Guests />} />
+        {/* <Route path="/guests" element={<Guests />} /> */}
+        <Route path="/guests" element={<Navigate to="/reservations" replace />} />
         <Route path="/rooms" element={<Rooms />} />
         <Route path="/room-types" element={<Rooms />} />
         <Route path="/housekeeping" element={<Housekeeping />} />

@@ -37,7 +37,7 @@ export const Layout: React.FC = () => {
           onOpenNewBooking={() => setNewBookingModalOpen(true)}
         />
 
-        <main className="flex-1 p-3 sm:p-5 md:p-6 lg:p-8 max-w-[1600px] 2xl:max-w-[1850px] w-full mx-auto pb-24 lg:pb-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 max-w-[1600px] 2xl:max-w-[1850px] w-full mx-auto pb-24 lg:pb-8">
           <Outlet />
         </main>
       </div>

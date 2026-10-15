@@ -87,6 +87,26 @@ export interface Guest {
 export type ReservationStatus = 'Pending' | 'Confirmed' | 'Checked In' | 'Checked Out' | 'Cancelled' | 'No Show';
 export type BookingSource = 'Direct Walk-in' | 'Phone Call' | 'Website' | 'Booking.com' | 'MakeMyTrip' | 'Agoda';
 
+export interface ReservationMember {
+  id: string;
+  name: string;
+  surname: string;
+  age?: number | string;
+  gender?: 'Male' | 'Female' | 'Other';
+  mobile: string;
+  address: string;
+  idDocumentType: IdDocType;
+  idDocumentNumber?: string;
+  idDocumentPhoto?: string;
+  isPrimary?: boolean;
+}
+
+export interface AllocatedRoom {
+  roomTypeId: string;
+  roomNumber: string;
+  ratePerNight: number;
+}
+
 export interface Reservation {
   id: string;
   guestId: string;
@@ -95,6 +115,9 @@ export interface Reservation {
   guestEmail?: string;
   roomTypeId: string;
   roomNumber: string;
+  allocatedRooms?: AllocatedRoom[];
+  assignedRoomNumbers?: string[];
+  members?: ReservationMember[];
   adults: number;
   children: number;
   checkInDate: string; // YYYY-MM-DD

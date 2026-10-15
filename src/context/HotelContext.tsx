@@ -352,18 +352,30 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const createReservation = (
     resData: Omit<Reservation, 'id' | 'createdAt' | 'createdBy'>
   ): { success: boolean; message: string; reservation?: Reservation } => {
-    // Overlap validation for assigned room
-    const conflicting = reservations.find(
-      r =>
-        r.roomNumber === resData.roomNumber &&
+    // Overlap validation for all assigned rooms
+    const targetRoomNumbers = resData.assignedRoomNumbers && resData.assignedRoomNumbers.length > 0
+      ? resData.assignedRoomNumbers
+      : [resData.roomNumber];
+
+    let conflictMessage = '';
+    const conflicting = reservations.find(r => {
+      const rRooms = r.assignedRoomNumbers && r.assignedRoomNumbers.length > 0 ? r.assignedRoomNumbers : [r.roomNumber];
+      const overlappingRoom = targetRoomNumbers.find(rm => rRooms.includes(rm));
+      if (
+        overlappingRoom &&
         (r.status === 'Confirmed' || r.status === 'Checked In' || r.status === 'Pending') &&
         areDatesOverlapping(r.checkInDate, r.checkOutDate, resData.checkInDate, resData.checkOutDate)
-    );
+      ) {
+        conflictMessage = `Room ${overlappingRoom} is already booked for ${r.guestName} between ${r.checkInDate} and ${r.checkOutDate}. Please choose another room.`;
+        return true;
+      }
+      return false;
+    });
 
     if (conflicting) {
       return {
         success: false,
-        message: `Room ${resData.roomNumber} is already booked for ${conflicting.guestName} between ${conflicting.checkInDate} and ${conflicting.checkOutDate}. Please choose another room.`,
+        message: conflictMessage || `One of the selected rooms is already booked. Please choose another room.`,
       };
     }
 
@@ -383,9 +395,13 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Update room status if arrival is today and status is confirmed/pending
     const todayStr = '2026-10-14'; // Reference today
     if (resData.checkInDate === todayStr) {
+      const assigned = resData.assignedRoomNumbers && resData.assignedRoomNumbers.length > 0
+        ? resData.assignedRoomNumbers
+        : [resData.roomNumber];
+
       setRooms(prev =>
         prev.map(r =>
-          r.roomNumber === resData.roomNumber
+          assigned.includes(r.roomNumber)
             ? { ...r, status: 'Reserved', currentGuestName: resData.guestName, currentReservationId: newId }
             : r
         )

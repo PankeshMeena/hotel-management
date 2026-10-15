@@ -249,7 +249,7 @@ export const Header: React.FC<HeaderProps> = ({
                           <div
                             key={g.id}
                             onClick={() => {
-                              navigate('/guests');
+                              navigate('/reservations');
                               setShowSearchResults(false);
                             }}
                             className="p-2 hover:bg-slate-50 rounded-lg cursor-pointer flex justify-between items-center transition"
@@ -522,7 +522,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <div
                       key={g.id}
                       onClick={() => {
-                        navigate('/guests');
+                        navigate('/reservations');
                         setMobileSearchOpen(false);
                       }}
                       className="p-1.5 hover:bg-slate-50 rounded-lg flex justify-between items-center"

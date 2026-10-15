@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
+  CalendarDays,
   ConciergeBell,
   BedDouble,
   Users,
@@ -24,9 +24,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       aria-label="Mobile Bottom Navigation"
     >
       <div className="flex items-center justify-around h-15 px-2 max-w-md mx-auto">
-        {/* Dashboard */}
+        {/* Reservations */}
         <NavLink
-          to="/dashboard"
+          to="/reservations"
           className={({ isActive }) =>
             `flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition ${
               isActive ? 'text-teal-600 font-bold' : 'text-slate-500 hover:text-slate-900'
@@ -36,9 +36,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {({ isActive }) => (
             <>
               <div className={`p-1 rounded-xl transition ${isActive ? 'bg-teal-50' : ''}`}>
-                <LayoutDashboard className="w-5 h-5" />
+                <CalendarDays className="w-5 h-5" />
               </div>
-              <span className="mt-0.5 tracking-tight">Overview</span>
+              <span className="mt-0.5 tracking-tight">Bookings</span>
             </>
           )}
         </NavLink>

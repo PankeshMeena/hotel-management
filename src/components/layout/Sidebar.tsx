@@ -46,10 +46,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isOwner = currentUser?.role === 'owner';
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, ownerOnly: false },
+    // { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, ownerOnly: false },
     { name: 'Reservations', path: '/reservations', icon: CalendarDays, ownerOnly: false },
     { name: 'Front Desk', path: '/front-desk', icon: ConciergeBell, ownerOnly: false },
-    { name: 'Guests', path: '/guests', icon: Users, ownerOnly: false },
+    // { name: 'Guests', path: '/guests', icon: Users, ownerOnly: false },
     { name: 'Rooms & Types', path: '/rooms', icon: BedDouble, ownerOnly: false },
     { name: 'Housekeeping', path: '/housekeeping', icon: Sparkles, ownerOnly: false },
     { name: 'Payments & Billing', path: '/payments', icon: CreditCard, ownerOnly: false },
