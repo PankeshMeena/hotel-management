@@ -17,9 +17,19 @@ router.post('/login', async (req, res) => {
     }
 
     const user = users[0];
-    // Password check (supports Demo@123 or direct match)
-    if (user.password && user.password !== password) {
+
+    // Check password: allow exact match, or known demo credentials, or Demo@123
+    const isOwner = user.email === 'owner@ujjainstay.demo' && (password === 'Owner@123' || password === 'Demo@123');
+    const isReception = user.email === 'reception@ujjainstay.demo' && (password === 'Reception@123' || password === 'Demo@123');
+    const isPasswordMatch = user.password === password || isOwner || isReception;
+
+    if (!isPasswordMatch) {
       return res.status(401).json({ success: false, message: 'Invalid password. Please check credentials.' });
+    }
+
+    // Sync database password if needed
+    if (user.password !== password) {
+      await query('UPDATE users SET password = ? WHERE id = ?', [password, user.id]);
     }
 
     // Return safe user object

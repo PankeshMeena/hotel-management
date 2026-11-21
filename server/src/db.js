@@ -320,10 +320,11 @@ export async function seedIfEmpty(p) {
   // 2. Users
   if (seeds.users && seeds.users.length) {
     for (const u of seeds.users) {
+      const defaultPass = u.email === 'owner@ujjainstay.demo' ? 'Owner@123' : (u.email === 'reception@ujjainstay.demo' ? 'Reception@123' : 'Demo@123');
       await p.query(`
         INSERT INTO users (id, name, email, password, role, avatar)
         VALUES (?, ?, ?, ?, ?, ?)
-      `, [u.id, u.name, u.email, 'Demo@123', u.role, u.avatar || null]);
+      `, [u.id, u.name, u.email, defaultPass, u.role, u.avatar || null]);
     }
   }
 
