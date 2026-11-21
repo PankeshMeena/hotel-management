@@ -36,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, login, logout, rooms, reservations, guests, hotelSettings, metrics } = useHotel();
+  const { currentUser, login, logout, rooms, reservations, guests, hotelSettings, metrics, isConnectedToDb } = useHotel();
   const { info, success } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -305,6 +305,19 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[10px] bg-white border border-slate-200 px-1.5 py-0.5 rounded font-bold text-teal-800">
               Ujjain (IST)
             </span>
+          </div>
+
+          {/* Database Live Status Badge */}
+          <div
+            className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border ${
+              isConnectedToDb
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-amber-50 text-amber-700 border-amber-200'
+            }`}
+            title={isConnectedToDb ? 'Connected to Node.js Express & MySQL Database (hotel_pms)' : 'Connecting to MySQL...'}
+          >
+            <span className={`w-2 h-2 rounded-full ${isConnectedToDb ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <span>{isConnectedToDb ? 'MySQL Live' : 'Local Mode'}</span>
           </div>
 
           {/* Quick Walk-in Button */}

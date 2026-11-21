@@ -15,12 +15,12 @@ export const Login: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      const result = login(email, password);
+    try {
+      const result = await login(email, password);
       setIsLoading(false);
 
       if (result.success) {
@@ -29,7 +29,10 @@ export const Login: React.FC = () => {
       } else {
         error(result.message, 'Authentication Failed');
       }
-    }, 400);
+    } catch {
+      setIsLoading(false);
+      error('An error occurred during authentication.', 'Authentication Failed');
+    }
   };
 
   const fillCredentials = (role: 'owner' | 'receptionist') => {

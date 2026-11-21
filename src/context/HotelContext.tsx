@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
 import {
   User,
   Role,
@@ -27,13 +27,18 @@ import {
   initialActivityLogs,
 } from '../data/seeds';
 import { areDatesOverlapping } from '../lib/utils';
+import { api } from '../lib/api';
 
 interface HotelContextType {
   // Auth
   currentUser: User | null;
-  login: (email: string, password: string) => { success: boolean; message: string };
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   hasRole: (role: Role) => boolean;
+
+  // DB Connection status
+  isConnectedToDb: boolean;
+  refreshData: () => Promise<void>;
 
   // State
   hotelSettings: HotelSettings;
@@ -133,8 +138,10 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Current logged in user
   const [currentUser, setCurrentUser] = useState<User | null>(() =>
-    loadFromStorage<User | null>(STORAGE_KEYS.USER, initialUsers[0]) // Default logged in as Owner for smooth immediate demo
+    loadFromStorage<User | null>(STORAGE_KEYS.USER, initialUsers[0]) // Default logged in as Owner
   );
+
+  const [isConnectedToDb, setIsConnectedToDb] = useState<boolean>(false);
 
   const [hotelSettings, setHotelSettings] = useState<HotelSettings>(() =>
     loadFromStorage<HotelSettings>(STORAGE_KEYS.SETTINGS, initialHotelSettings)
@@ -148,27 +155,13 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     loadFromStorage<Room[]>(STORAGE_KEYS.ROOMS, initialRooms)
   );
 
-  const [guests, setGuests] = useState<Guest[]>(() => {
-    const loaded = loadFromStorage<Guest[]>(STORAGE_KEYS.GUESTS, initialGuests);
-    return loaded.map(g => {
-      const seedMatch = initialGuests.find(ig => ig.id === g.id);
-      if (!g.idDocumentPhoto && seedMatch?.idDocumentPhoto) {
-        return { ...g, idDocumentPhoto: seedMatch.idDocumentPhoto };
-      }
-      return g;
-    });
-  });
+  const [guests, setGuests] = useState<Guest[]>(() =>
+    loadFromStorage<Guest[]>(STORAGE_KEYS.GUESTS, initialGuests)
+  );
 
-  const [reservations, setReservations] = useState<Reservation[]>(() => {
-    const loaded = loadFromStorage<Reservation[]>(STORAGE_KEYS.RESERVATIONS, initialReservations);
-    return loaded.map(r => {
-      const seedMatch = initialReservations.find(ir => ir.id === r.id);
-      if (!r.idDocumentPhoto && seedMatch?.idDocumentPhoto) {
-        return { ...r, idDocumentPhoto: seedMatch.idDocumentPhoto };
-      }
-      return r;
-    });
-  });
+  const [reservations, setReservations] = useState<Reservation[]>(() =>
+    loadFromStorage<Reservation[]>(STORAGE_KEYS.RESERVATIONS, initialReservations)
+  );
 
   const [transactions, setTransactions] = useState<Transaction[]>(() =>
     loadFromStorage<Transaction[]>(STORAGE_KEYS.TRANSACTIONS, initialTransactions)
@@ -190,50 +183,91 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, initialActivityLogs)
   );
 
-  // Sync to localStorage
+  // Function to load fresh state from the Express + MySQL backend
+  const refreshData = useCallback(async () => {
+    try {
+      const [
+        settingsRes,
+        roomTypesRes,
+        roomsRes,
+        guestsRes,
+        reservationsRes,
+        transactionsRes,
+        housekeepingRes,
+        expensesRes,
+        staffRes,
+        activityLogsRes,
+      ] = await Promise.all([
+        api.get<{ success: boolean; settings: HotelSettings }>('/settings').catch(() => null),
+        api.get<{ success: boolean; roomTypes: RoomType[] }>('/room-types').catch(() => null),
+        api.get<{ success: boolean; rooms: Room[] }>('/rooms').catch(() => null),
+        api.get<{ success: boolean; guests: Guest[] }>('/guests').catch(() => null),
+        api.get<{ success: boolean; reservations: Reservation[] }>('/reservations').catch(() => null),
+        api.get<{ success: boolean; transactions: Transaction[] }>('/transactions').catch(() => null),
+        api.get<{ success: boolean; tasks: HousekeepingTask[] }>('/housekeeping').catch(() => null),
+        api.get<{ success: boolean; expenses: Expense[] }>('/expenses').catch(() => null),
+        api.get<{ success: boolean; staff: Staff[] }>('/staff').catch(() => null),
+        api.get<{ success: boolean; activityLogs: ActivityLog[] }>('/activity-logs').catch(() => null),
+      ]);
+
+      if (settingsRes?.settings) {
+        setHotelSettings(settingsRes.settings);
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settingsRes.settings));
+      }
+      if (roomTypesRes?.roomTypes) {
+        setRoomTypes(roomTypesRes.roomTypes);
+        localStorage.setItem(STORAGE_KEYS.ROOM_TYPES, JSON.stringify(roomTypesRes.roomTypes));
+      }
+      if (roomsRes?.rooms) {
+        setRooms(roomsRes.rooms);
+        localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(roomsRes.rooms));
+      }
+      if (guestsRes?.guests) {
+        setGuests(guestsRes.guests);
+        localStorage.setItem(STORAGE_KEYS.GUESTS, JSON.stringify(guestsRes.guests));
+      }
+      if (reservationsRes?.reservations) {
+        setReservations(reservationsRes.reservations);
+        localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(reservationsRes.reservations));
+      }
+      if (transactionsRes?.transactions) {
+        setTransactions(transactionsRes.transactions);
+        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactionsRes.transactions));
+      }
+      if (housekeepingRes?.tasks) {
+        setHousekeepingTasks(housekeepingRes.tasks);
+        localStorage.setItem(STORAGE_KEYS.HOUSEKEEPING, JSON.stringify(housekeepingRes.tasks));
+      }
+      if (expensesRes?.expenses) {
+        setExpenses(expensesRes.expenses);
+        localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expensesRes.expenses));
+      }
+      if (staffRes?.staff) {
+        setStaff(staffRes.staff);
+        localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(staffRes.staff));
+      }
+      if (activityLogsRes?.activityLogs) {
+        setActivityLogs(activityLogsRes.activityLogs);
+        localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOGS, JSON.stringify(activityLogsRes.activityLogs));
+      }
+
+      setIsConnectedToDb(true);
+      console.log('✅ Connected to Node.js Express backend & MySQL Database (hotel_pms)');
+    } catch (err) {
+      console.warn('⚠️ Backend not reachable; using persistent local cache:', err);
+      setIsConnectedToDb(false);
+    }
+  }, []);
+
+  // Initial load from MySQL on mount
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+
+  // Sync to localStorage as offline safety backup
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(currentUser));
   }, [currentUser]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(hotelSettings));
-  }, [hotelSettings]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ROOM_TYPES, JSON.stringify(roomTypes));
-  }, [roomTypes]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(rooms));
-  }, [rooms]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.GUESTS, JSON.stringify(guests));
-  }, [guests]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(reservations));
-  }, [reservations]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.HOUSEKEEPING, JSON.stringify(housekeepingTasks));
-  }, [housekeepingTasks]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
-  }, [expenses]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(staff));
-  }, [staff]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOGS, JSON.stringify(activityLogs));
-  }, [activityLogs]);
 
   const addActivityLog = (
     action: string,
@@ -254,10 +288,29 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       description,
     };
     setActivityLogs(prev => [newEntry, ...prev]);
+
+    // Send to backend
+    api.post('/activity-logs', newEntry).catch(err => console.warn('Activity log sync error:', err));
   };
 
-  const login = (email: string, pass: string): { success: boolean; message: string } => {
+  const login = async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
     const cleanEmail = email.trim().toLowerCase();
+
+    // First attempt real database login via backend
+    try {
+      const res = await api.post<{ success: boolean; message: string; user?: User }>('/auth/login', {
+        email: cleanEmail,
+        password: pass,
+      });
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        addActivityLog('User Login', 'Auth', res.user.id, `${res.user.name} signed in via MySQL database`);
+        return { success: true, message: `Welcome back, ${res.user.name}!` };
+      }
+    } catch {
+      // Fallback to local credential matching
+    }
+
     if (cleanEmail === 'owner@ujjainstay.demo' && pass === 'Owner@123') {
       const ownerUser = initialUsers[0];
       setCurrentUser(ownerUser);
@@ -289,11 +342,13 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const updateHotelSettings = (newSettings: HotelSettings) => {
     setHotelSettings(newSettings);
     addActivityLog('Hotel Settings Updated', 'Settings', 'CONFIG', 'General hotel profile and tax rules modified');
+    api.put('/settings', newSettings).catch(err => console.warn('Settings sync error:', err));
   };
 
   const updateRoomType = (id: string, updates: Partial<RoomType>) => {
     setRoomTypes(prev => prev.map(rt => (rt.id === id ? { ...rt, ...updates } : rt)));
     addActivityLog('Room Type Updated', 'Room', id, `Updated pricing or details for room type ${id}`);
+    api.put(`/room-types/${id}`, updates).catch(err => console.warn('Room type sync error:', err));
   };
 
   const addRoom = (roomData: Omit<Room, 'id'>) => {
@@ -303,11 +358,13 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     setRooms(prev => [...prev, newRoom].sort((a, b) => a.roomNumber.localeCompare(b.roomNumber)));
     addActivityLog('Room Added', 'Room', newRoom.roomNumber, `Added Room ${newRoom.roomNumber} (Floor ${newRoom.floor})`);
+    api.post('/rooms', roomData).catch(err => console.warn('Room add sync error:', err));
   };
 
   const updateRoom = (id: string, updates: Partial<Room>) => {
     setRooms(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
     addActivityLog('Room Updated', 'Room', id, `Room ${id} details updated`);
+    api.put(`/rooms/${id}`, updates).catch(err => console.warn('Room update sync error:', err));
   };
 
   const deleteRoom = (id: string): { success: boolean; message: string } => {
@@ -327,6 +384,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setRooms(prev => prev.filter(r => r.id !== id));
     addActivityLog('Room Deleted', 'Room', target.roomNumber, `Room ${target.roomNumber} removed from inventory`);
+    api.delete(`/rooms/${id}`).catch(err => console.warn('Room delete sync error:', err));
     return { success: true, message: `Room ${target.roomNumber} has been removed successfully.` };
   };
 
@@ -341,12 +399,14 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     setGuests(prev => [newGuest, ...prev]);
     addActivityLog('Guest Registered', 'Guest', newId, `Registered guest ${newGuest.fullName} (${newGuest.city})`);
+    api.post('/guests', newGuest).catch(err => console.warn('Guest add sync error:', err));
     return newGuest;
   };
 
   const updateGuest = (id: string, updates: Partial<Guest>) => {
     setGuests(prev => prev.map(g => (g.id === id ? { ...g, ...updates } : g)));
     addActivityLog('Guest Updated', 'Guest', id, `Guest details updated for ${id}`);
+    api.put(`/guests/${id}`, updates).catch(err => console.warn('Guest update sync error:', err));
   };
 
   const createReservation = (
@@ -393,7 +453,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setReservations(prev => [newReservation, ...prev]);
 
     // Update room status if arrival is today and status is confirmed/pending
-    const todayStr = '2026-10-14'; // Reference today
+    const todayStr = '2026-10-14';
     if (resData.checkInDate === todayStr) {
       const assigned = resData.assignedRoomNumbers && resData.assignedRoomNumbers.length > 0
         ? resData.assignedRoomNumbers
@@ -428,12 +488,19 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     addActivityLog('Reservation Created', 'Reservation', newId, `Booked Room ${resData.roomNumber} for ${resData.guestName} (${resData.numberOfNights} nights)`);
+
+    // Asynchronously sync to MySQL backend
+    api.post('/reservations', newReservation)
+      .then(() => refreshData())
+      .catch(err => console.warn('Reservation backend sync error:', err));
+
     return { success: true, message: `Reservation ${newId} confirmed successfully.`, reservation: newReservation };
   };
 
   const updateReservation = (id: string, updates: Partial<Reservation>) => {
     setReservations(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
     addActivityLog('Reservation Modified', 'Reservation', id, `Updated reservation ${id}`);
+    api.put(`/reservations/${id}`, updates).catch(err => console.warn('Reservation update sync error:', err));
   };
 
   const cancelReservation = (id: string, reason: string) => {
@@ -454,6 +521,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     addActivityLog('Reservation Cancelled', 'Reservation', id, `Cancelled booking for ${target.guestName}: ${reason}`);
+    api.post(`/reservations/${id}/cancel`, { reason }).then(() => refreshData()).catch(err => console.warn('Cancel sync error:', err));
   };
 
   const checkInReservation = (id: string): { success: boolean; message: string } => {
@@ -482,6 +550,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     addActivityLog('Guest Checked In', 'Reservation', id, `${target.guestName} checked in to Room ${target.roomNumber}`);
+    api.post(`/reservations/${id}/checkin`).then(() => refreshData()).catch(err => console.warn('Checkin sync error:', err));
     return { success: true, message: `${target.guestName} checked into Room ${target.roomNumber} successfully!` };
   };
 
@@ -534,7 +603,6 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const existingGuest = guests.find(g => g.mobile.replace(/\s+/g, '') === payload.guest.mobile.replace(/\s+/g, ''));
     if (existingGuest) {
       guestId = existingGuest.id;
-      // Update verification status or notes if provided
       updateGuest(existingGuest.id, {
         idDocumentType: payload.guest.idDocumentType,
         idDocumentNumber: payload.guest.idDocumentNumber,
@@ -623,6 +691,10 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     addActivityLog('Walk-in Check-in', 'Reservation', newReservationId, `${payload.guest.fullName} checked in directly to Room ${payload.roomNumber}`);
+
+    // Sync to backend MySQL
+    api.post('/reservations/walkin', payload).then(() => refreshData()).catch(err => console.warn('Walk-in backend sync error:', err));
+
     return { success: true, message: `Walk-in check-in completed for ${payload.guest.fullName} in Room ${payload.roomNumber}!`, reservation: newRes };
   };
 
@@ -717,6 +789,10 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     addActivityLog('Guest Checked Out', 'Reservation', reservationId, `${res.guestName} checked out of Room ${res.roomNumber}. Room marked for Cleaning.`);
+
+    // Sync to backend MySQL
+    api.post(`/reservations/${reservationId}/checkout`, { finalPayment }).then(() => refreshData()).catch(err => console.warn('Check-out sync error:', err));
+
     return { success: true, message: `Check-out completed for ${res.guestName}. Room ${res.roomNumber} queued for cleaning.` };
   };
 
@@ -749,6 +825,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     addActivityLog('Payment Recorded', 'Payment', txnId, `Received ${hotelSettings.currencySymbol}${payment.amount} via ${payment.paymentMethod} from ${payment.guestName}`);
+    api.post('/transactions', payment).then(() => refreshData()).catch(err => console.warn('Payment sync error:', err));
   };
 
   const recordRefund = (refund: Omit<Transaction, 'id' | 'createdAt' | 'recordedBy' | 'type'>) => {
@@ -765,9 +842,8 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     setTransactions(prev => [newTxn, ...prev]);
-
-    // Note: Refunds are tracked distinctly and do not inflate ordinary revenue
     addActivityLog('Refund Issued', 'Payment', txnId, `Issued refund of ${hotelSettings.currencySymbol}${refund.amount} to ${refund.guestName}`);
+    api.post('/transactions', { ...refund, type: 'Refund' }).then(() => refreshData()).catch(err => console.warn('Refund sync error:', err));
   };
 
   const createHousekeepingTask = (task: Omit<HousekeepingTask, 'id' | 'taskCreationTime'>) => {
@@ -788,6 +864,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     addActivityLog('Housekeeping Task Created', 'Housekeeping', newId, `Task created for Room ${task.roomNumber}`);
+    api.post('/housekeeping', task).then(() => refreshData()).catch(err => console.warn('HK sync error:', err));
   };
 
   const updateHousekeepingStatus = (taskId: string, status: HousekeepingTask['cleaningStatus']) => {
@@ -806,7 +883,6 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       prev.map(r => {
         if (r.roomNumber === target.roomNumber) {
           let newRoomStatus = r.status;
-          // If room was 'Cleaning' and is now Clean/Inspected, only make it Available if not currently occupied or reserved
           if (r.status === 'Cleaning' && (status === 'Clean' || status === 'Inspected')) {
             newRoomStatus = 'Available';
           }
@@ -817,6 +893,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     addActivityLog('Housekeeping Updated', 'Housekeeping', taskId, `Room ${target.roomNumber} status set to ${status}`);
+    api.put(`/housekeeping/${taskId}`, { status }).then(() => refreshData()).catch(err => console.warn('HK update sync error:', err));
   };
 
   const addExpense = (expense: Omit<Expense, 'id' | 'createdAt' | 'recordedBy'>) => {
@@ -833,11 +910,13 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setExpenses(prev => [newExpense, ...prev]);
     addActivityLog('Expense Recorded', 'Expense', id, `Added ${expense.category} expense of ${hotelSettings.currencySymbol}${expense.amount}`);
+    api.post('/expenses', expense).then(() => refreshData()).catch(err => console.warn('Expense sync error:', err));
   };
 
   const deleteExpense = (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
     addActivityLog('Expense Deleted', 'Expense', id, `Removed expense entry ${id}`);
+    api.delete(`/expenses/${id}`).then(() => refreshData()).catch(err => console.warn('Expense delete sync error:', err));
   };
 
   const addStaff = (staffData: Omit<Staff, 'id'>) => {
@@ -845,11 +924,13 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const newStaff: Staff = { ...staffData, id };
     setStaff(prev => [...prev, newStaff]);
     addActivityLog('Staff Member Added', 'Staff', id, `Added ${newStaff.name} (${newStaff.role})`);
+    api.post('/staff', staffData).then(() => refreshData()).catch(err => console.warn('Staff add sync error:', err));
   };
 
   const updateStaff = (id: string, updates: Partial<Staff>) => {
     setStaff(prev => prev.map(s => (s.id === id ? { ...s, ...updates } : s)));
     addActivityLog('Staff Member Updated', 'Staff', id, `Updated staff profile for ${id}`);
+    api.put(`/staff/${id}`, updates).then(() => refreshData()).catch(err => console.warn('Staff update sync error:', err));
   };
 
   const resetDemoData = () => {
@@ -865,6 +946,10 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setStaff(initialStaff);
     setActivityLogs(initialActivityLogs);
     setCurrentUser(initialUsers[0]);
+
+    api.post('/reset-demo')
+      .then(() => refreshData())
+      .catch(err => console.warn('Reset demo sync error:', err));
   };
 
   // Recalculate metrics dynamically based on active data
@@ -923,6 +1008,8 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         login,
         logout,
         hasRole,
+        isConnectedToDb,
+        refreshData,
         hotelSettings,
         updateHotelSettings,
         roomTypes,

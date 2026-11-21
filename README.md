@@ -156,6 +156,30 @@ HotelManegment/
 
 ---
 
+## ⚡ Full-Stack Dynamic Architecture (Node.js + Express + MySQL)
+
+The system is powered by a high-performance **Node.js & Express REST API** coupled with a relational **MySQL / MariaDB Database** (compatible with XAMPP MySQL or standalone MySQL servers):
+
+- **Backend Directory**: `server/src/`
+- **Database Engine**: MySQL / MariaDB (Database: `hotel_pms`)
+- **Driver**: `mysql2/promise` with connection pooling
+- **Auto-Initialization**: On boot, the server checks and auto-creates database `hotel_pms`, runs table migrations, and seeds initial PMS data.
+- **API Proxy**: Frontend Vite server proxies `/api/*` directly to `http://localhost:5000`.
+
+### Running Frontend & Backend:
+```bash
+# 1. Start MySQL in XAMPP (Port 3306)
+
+# 2. Start both Vite & Express Backend concurrently:
+npm run dev
+
+# Or run them individually:
+npm run server       # Starts Express backend on http://localhost:5000
+npm run dev:client   # Starts Vite frontend on http://localhost:5173
+```
+
+---
+
 ## 🔒 Security & Privacy Notice
 - All contact numbers and identities in seed data are completely fictional.
 - Aadhaar numbers are automatically masked (`•••• •••• 4892`).
