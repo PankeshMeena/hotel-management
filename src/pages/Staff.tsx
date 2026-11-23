@@ -18,7 +18,7 @@ import {
 import { Modal } from '../components/ui/Modal';
 
 export const StaffPage: React.FC = () => {
-  const { staff, addStaff, updateStaff, currentUser, login } = useHotel();
+  const { staff, addStaff, updateStaff, currentUser, currentHotel, login } = useHotel();
   const { success, warning, error } = useToast();
 
   const isOwner = currentUser?.role === 'owner';
@@ -48,8 +48,14 @@ export const StaffPage: React.FC = () => {
         </p>
         <button
           onClick={() => {
-            login('owner@ujjainstay.demo', 'Owner@123');
-            success('Switched to Owner session (Rajesh Sharma)');
+            const isShanti = currentHotel?.id === 'hotel_shanti_02';
+            if (isShanti) {
+              login('owner@shantipalace.demo', 'Owner@123');
+              success('Switched to Shanti Palace Owner session (Vikram Sharma)');
+            } else {
+              login('owner@ujjainstay.demo', 'Owner@123');
+              success('Switched to UjjainStay Owner session (Rajesh Sharma)');
+            }
           }}
           className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs"
         >

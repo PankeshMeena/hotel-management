@@ -22,7 +22,7 @@ router.post('/login', async (req, res) => {
     // Password verification rules:
     const isSuperAdmin = cleanEmail === 'superadmin@pms.com' && (password === 'Super@123' || password === 'Demo@123');
     const isOwner = (cleanEmail === 'owner@ujjainstay.demo' || cleanEmail === 'owner@shantipalace.demo') && (password === 'Owner@123' || password === 'Demo@123');
-    const isReception = cleanEmail === 'reception@ujjainstay.demo' && (password === 'Reception@123' || password === 'Demo@123');
+    const isReception = (cleanEmail === 'reception@ujjainstay.demo' || cleanEmail === 'reception@shantipalace.demo') && (password === 'Reception@123' || password === 'Demo@123');
     const isPasswordMatch = user.password === password || isSuperAdmin || isOwner || isReception;
 
     if (!isPasswordMatch) {

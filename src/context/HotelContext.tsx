@@ -414,17 +414,51 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: true, message: `Welcome back, ${superAdminUser.name} (Platform Admin)!`, user: superAdminUser };
     }
 
-    if (cleanEmail === 'owner@ujjainstay.demo' && pass === 'Owner@123') {
+    if (cleanEmail === 'owner@ujjainstay.demo' && (pass === 'Owner@123' || pass === 'Demo@123')) {
       const ownerUser = initialUsers[0];
       setCurrentUser(ownerUser);
-      addActivityLog('User Login', 'Auth', ownerUser.id, `${ownerUser.name} signed in as Owner`);
+      localStorage.setItem('ujjainstay_active_hotel_id', 'hotel_ujjain_01');
+      setActiveHotelId('hotel_ujjain_01');
+      addActivityLog('User Login', 'Auth', ownerUser.id, `${ownerUser.name} signed in as UjjainStay Owner`);
       return { success: true, message: `Welcome back, ${ownerUser.name}!`, user: ownerUser };
     }
-    if (cleanEmail === 'reception@ujjainstay.demo' && pass === 'Reception@123') {
+    if (cleanEmail === 'reception@ujjainstay.demo' && (pass === 'Reception@123' || pass === 'Demo@123')) {
       const recUser = initialUsers[1];
       setCurrentUser(recUser);
-      addActivityLog('User Login', 'Auth', recUser.id, `${recUser.name} signed in as Receptionist`);
+      localStorage.setItem('ujjainstay_active_hotel_id', 'hotel_ujjain_01');
+      setActiveHotelId('hotel_ujjain_01');
+      addActivityLog('User Login', 'Auth', recUser.id, `${recUser.name} signed in as UjjainStay Receptionist`);
       return { success: true, message: `Welcome back, ${recUser.name}!`, user: recUser };
+    }
+    if (cleanEmail === 'owner@shantipalace.demo' && (pass === 'Owner@123' || pass === 'Demo@123')) {
+      const shantiOwner: User = {
+        id: 'usr_shanti_owner',
+        name: 'Vikram Sharma',
+        email: 'owner@shantipalace.demo',
+        role: 'owner',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        hotelId: 'hotel_shanti_02',
+      };
+      setCurrentUser(shantiOwner);
+      localStorage.setItem('ujjainstay_active_hotel_id', 'hotel_shanti_02');
+      setActiveHotelId('hotel_shanti_02');
+      addActivityLog('User Login', 'Auth', shantiOwner.id, `${shantiOwner.name} signed in as Shanti Palace Owner`);
+      return { success: true, message: `Welcome back, ${shantiOwner.name}!`, user: shantiOwner };
+    }
+    if (cleanEmail === 'reception@shantipalace.demo' && (pass === 'Reception@123' || pass === 'Demo@123')) {
+      const shantiRecUser: User = {
+        id: 'usr_shanti_reception',
+        name: 'Neha Verma (Front Desk)',
+        email: 'reception@shantipalace.demo',
+        role: 'receptionist',
+        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
+        hotelId: 'hotel_shanti_02',
+      };
+      setCurrentUser(shantiRecUser);
+      localStorage.setItem('ujjainstay_active_hotel_id', 'hotel_shanti_02');
+      setActiveHotelId('hotel_shanti_02');
+      addActivityLog('User Login', 'Auth', shantiRecUser.id, `${shantiRecUser.name} signed in as Shanti Palace Receptionist`);
+      return { success: true, message: `Welcome back, ${shantiRecUser.name}!`, user: shantiRecUser };
     }
     return { success: false, message: 'Invalid credentials. Please check demo email and password.' };
   };

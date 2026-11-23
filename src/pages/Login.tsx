@@ -39,18 +39,21 @@ export const Login: React.FC = () => {
     }
   };
 
-  const fillCredentials = (type: 'superadmin' | 'owner' | 'shanti_owner' | 'receptionist') => {
+  const fillCredentials = (type: 'superadmin' | 'owner' | 'receptionist' | 'shanti_owner' | 'shanti_receptionist') => {
     if (type === 'superadmin') {
       setEmail('superadmin@pms.com');
       setPassword('Super@123');
     } else if (type === 'owner') {
       setEmail('owner@ujjainstay.demo');
       setPassword('Owner@123');
+    } else if (type === 'receptionist') {
+      setEmail('reception@ujjainstay.demo');
+      setPassword('Reception@123');
     } else if (type === 'shanti_owner') {
       setEmail('owner@shantipalace.demo');
       setPassword('Owner@123');
-    } else {
-      setEmail('reception@ujjainstay.demo');
+    } else if (type === 'shanti_receptionist') {
+      setEmail('reception@shantipalace.demo');
       setPassword('Reception@123');
     }
   };
@@ -83,63 +86,91 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Demo Fast Fill Buttons */}
-        <div className="px-8 pt-6 pb-2">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2 text-center">
-              Quick Demo Logins (Click to Auto-fill)
-            </span>
-            <div className="grid grid-cols-2 gap-2">
+        <div className="px-8 pt-5 pb-1">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                Quick Demo Accounts (1-Click Fill)
+              </span>
               <button
                 type="button"
                 onClick={() => fillCredentials('superadmin')}
-                className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition ${
                   email === 'superadmin@pms.com'
                     ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
                 }`}
               >
-                <span className="block font-bold">Platform Super Admin</span>
-                <span className="text-[10px] opacity-80 block truncate">All Hotels & SaaS</span>
+                Platform Super Admin
               </button>
+            </div>
 
-              <button
-                type="button"
-                onClick={() => fillCredentials('owner')}
-                className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
-                  email === 'owner@ujjainstay.demo'
-                    ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span className="block font-bold">Hotel 1 (UjjainStay)</span>
-                <span className="text-[10px] opacity-80 block truncate">Ujjain Property</span>
-              </button>
+            {/* Hotel 1 (UjjainStay) Accounts */}
+            <div>
+              <div className="flex items-center justify-between text-[10px] font-bold text-teal-800 uppercase tracking-wide mb-1">
+                <span>Hotel 1: UjjainStay (Ujjain)</span>
+                <span className="text-slate-400 font-normal">Independent PMS</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => fillCredentials('owner')}
+                  className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
+                    email === 'owner@ujjainstay.demo'
+                      ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block font-bold">Rajesh Sharma</span>
+                  <span className="text-[10px] opacity-80 block truncate">Owner / Admin</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillCredentials('receptionist')}
+                  className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
+                    email === 'reception@ujjainstay.demo'
+                      ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block font-bold">Pooja Sharma</span>
+                  <span className="text-[10px] opacity-80 block truncate">Front Desk Reception</span>
+                </button>
+              </div>
+            </div>
 
-              <button
-                type="button"
-                onClick={() => fillCredentials('shanti_owner')}
-                className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
-                  email === 'owner@shantipalace.demo'
-                    ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span className="block font-bold">Hotel 2 (Shanti Palace)</span>
-                <span className="text-[10px] opacity-80 block truncate">Indore Property</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillCredentials('receptionist')}
-                className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
-                  email === 'reception@ujjainstay.demo'
-                    ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span className="block font-bold">Receptionist</span>
-                <span className="text-[10px] opacity-80 block truncate">Front Desk Only</span>
-              </button>
+            {/* Hotel 2 (Hotel Shanti Palace) Accounts */}
+            <div>
+              <div className="flex items-center justify-between text-[10px] font-bold text-indigo-800 uppercase tracking-wide mb-1">
+                <span>Hotel 2: Shanti Palace (Indore)</span>
+                <span className="text-slate-400 font-normal">Independent PMS</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => fillCredentials('shanti_owner')}
+                  className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
+                    email === 'owner@shantipalace.demo'
+                      ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block font-bold">Vikram Sharma</span>
+                  <span className="text-[10px] opacity-80 block truncate">Owner / Admin</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillCredentials('shanti_receptionist')}
+                  className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
+                    email === 'reception@shantipalace.demo'
+                      ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block font-bold">Neha Verma</span>
+                  <span className="text-[10px] opacity-80 block truncate">Front Desk Reception</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

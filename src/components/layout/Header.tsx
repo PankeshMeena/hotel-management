@@ -154,14 +154,25 @@ export const Header: React.FC<HeaderProps> = ({
   const hasResults =
     filteredGuests.length > 0 || filteredReservations.length > 0 || filteredRooms.length > 0;
 
-  // Demo Switch Role shortcut
+  // Demo Switch Role shortcut within the active hotel
   const handleSwitchRole = (targetRole: 'owner' | 'receptionist') => {
+    const isShanti = currentHotel?.id === 'hotel_shanti_02';
     if (targetRole === 'owner') {
-      login('owner@ujjainstay.demo', 'Owner@123');
-      success('Switched to Owner account (Rajesh Sharma)');
+      if (isShanti) {
+        login('owner@shantipalace.demo', 'Owner@123');
+        success('Switched to Shanti Palace Owner (Vikram Sharma)');
+      } else {
+        login('owner@ujjainstay.demo', 'Owner@123');
+        success('Switched to UjjainStay Owner (Rajesh Sharma)');
+      }
     } else {
-      login('reception@ujjainstay.demo', 'Reception@123');
-      success('Switched to Receptionist account (Pooja Verma)');
+      if (isShanti) {
+        login('reception@shantipalace.demo', 'Reception@123');
+        success('Switched to Shanti Palace Receptionist (Neha Verma)');
+      } else {
+        login('reception@ujjainstay.demo', 'Reception@123');
+        success('Switched to UjjainStay Receptionist (Pooja Sharma)');
+      }
     }
     setShowProfileMenu(false);
   };

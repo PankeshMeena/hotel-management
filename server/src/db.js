@@ -468,6 +468,20 @@ export async function seedTenantsAndData(p) {
     ON DUPLICATE KEY UPDATE hotel_id='hotel_shanti_02', password='Owner@123'
   `);
 
+  // Ensure Hotel 2 Receptionist exists
+  await p.query(`
+    INSERT INTO users (id, hotel_id, name, email, password, role, avatar)
+    VALUES ('usr_shanti_reception', 'hotel_shanti_02', 'Neha Verma', 'reception@shantipalace.demo', 'Reception@123', 'receptionist', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150')
+    ON DUPLICATE KEY UPDATE hotel_id='hotel_shanti_02', password='Reception@123'
+  `);
+
+  // Ensure Hotel 2 Staff includes Neha Verma
+  await p.query(`
+    INSERT INTO staff (id, hotel_id, name, role, mobile, email, status, joining_date, avatar)
+    VALUES ('STF-SHANTI-01', 'hotel_shanti_02', 'Neha Verma', 'Receptionist', '+91 98261 44556', 'reception@shantipalace.demo', 'Active', '2026-10-01', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150')
+    ON DUPLICATE KEY UPDATE role='Receptionist', status='Active'
+  `);
+
   // 4. Ensure Hotel 2 has Settings
   await p.query(`
     INSERT INTO hotel_settings (
