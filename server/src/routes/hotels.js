@@ -277,12 +277,48 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE / Deactivate hotel
+// POST toggle active/inactive status
+router.post('/:id/toggle-status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rows = await query('SELECT status FROM hotels WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Hotel not found.' });
+    }
+    const current = rows[0].status;
+    const nextStatus = current === 'Active' ? 'Inactive' : 'Active';
+    await query('UPDATE hotels SET status = ? WHERE id = ?', [nextStatus, id]);
+    return res.json({ success: true, message: `Hotel status changed to ${nextStatus}.`, status: nextStatus });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE hotel (soft-delete or permanent)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await query(`UPDATE hotels SET status = 'Inactive' WHERE id = ?`, [id]);
-    return res.json({ success: true, message: 'Hotel marked as inactive.' });
+    const permanent = req.query.permanent === 'true';
+
+    if (permanent) {
+      // Clean up linked tenant records
+      await query('DELETE FROM activity_logs WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM transactions WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM housekeeping_tasks WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM expenses WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM reservations WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM rooms WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM room_types WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM guests WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM staff WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM users WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM hotel_settings WHERE hotel_id = ?', [id]);
+      await query('DELETE FROM hotels WHERE id = ?', [id]);
+      return res.json({ success: true, message: 'Hotel permanently deleted from platform.' });
+    } else {
+      await query(`UPDATE hotels SET status = 'Inactive' WHERE id = ?`, [id]);
+      return res.json({ success: true, message: 'Hotel marked as Inactive.' });
+    }
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

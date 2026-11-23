@@ -52,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
     switchHotel,
   } = useHotel();
   const { info, success } = useToast();
+  const isSuperAdmin = currentUser?.role === 'superadmin';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -109,8 +110,9 @@ export const Header: React.FC<HeaderProps> = ({
         return { title: 'Reports & Excel Export', subtitle: 'Daily registers, occupancy, revenue summaries, and .xlsx exports' };
       case '/staff':
         return { title: 'Staff Management', subtitle: 'Staff profiles, role privileges, and front-desk assignments' };
+      case '/super-admin':
       case '/hotels':
-        return { title: 'Hotel Properties (SaaS Tenants)', subtitle: 'Manage multiple hotel accounts, subscription plans & onboarding' };
+        return { title: 'Hotels Management', subtitle: 'Centralized platform administration. Manage hotel properties, status & details.' };
       case '/settings':
         return { title: 'Hotel Settings & Policies', subtitle: 'GSTIN, invoice prefixes, check-in rules, and room policies' };
       case '/activity-log':
@@ -187,18 +189,20 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right: Search, Date, Quick Actions, Profile */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Mobile Search Toggle Button */}
-          <button
-            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-            className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition md:hidden"
-            aria-label="Search"
-            title="Search hotel records"
-          >
-            <Search className="w-4 h-4" />
-          </button>
+          {!isSuperAdmin && (
+            <>
+              {/* Mobile Search Toggle Button */}
+              <button
+                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition md:hidden"
+                aria-label="Search"
+                title="Search hotel records"
+              >
+                <Search className="w-4 h-4" />
+              </button>
 
-          {/* Desktop Global Search Bar */}
-          <div ref={searchRef} className="relative hidden md:block">
+              {/* Desktop Global Search Bar */}
+              <div ref={searchRef} className="relative hidden md:block">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -418,6 +422,8 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
+          </>
+          )}
 
           {/* Current Date & Time Badge (Desktop / Mac) */}
           <div className="hidden xl:flex items-center gap-2 bg-slate-100 border border-slate-200/80 px-3 py-1.5 rounded-xl text-xs text-slate-700">
@@ -444,78 +450,83 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{isConnectedToDb ? 'MySQL Live' : 'Local Mode'}</span>
           </div>
 
-          {/* Quick Walk-in Button */}
-          <button
-            onClick={() => {
-              if (onOpenWalkIn) onOpenWalkIn();
-              else navigate('/front-desk');
-            }}
-            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shadow-xs hover:shadow-md transition active:scale-95"
-            title="Fast walk-in check-in wizard"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Walk-in</span>
-            <span className="sm:hidden">Check-in</span>
-            <span className="hidden sm:inline">Check-in</span>
-          </button>
+          {/* Operational Only: Quick Walk-in Button & Front Desk Alerts */}
+          {!isSuperAdmin && (
+            <>
+              {/* Quick Walk-in Button */}
+              <button
+                onClick={() => {
+                  if (onOpenWalkIn) onOpenWalkIn();
+                  else navigate('/front-desk');
+                }}
+                className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shadow-xs hover:shadow-md transition active:scale-95"
+                title="Fast walk-in check-in wizard"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Walk-in</span>
+                <span className="sm:hidden">Check-in</span>
+                <span className="hidden sm:inline">Check-in</span>
+              </button>
 
-          {/* Notifications Popover */}
-          <div ref={notifRef} className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition"
-              aria-label="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              {(metrics.todaysCheckIns > 0 || metrics.cleaningRooms > 0) && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white" />
-              )}
-            </button>
+              {/* Notifications Popover */}
+              <div ref={notifRef} className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  {(metrics.todaysCheckIns > 0 || metrics.cleaningRooms > 0) && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white" />
+                  )}
+                </button>
 
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-sm sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Front Desk Alerts
-                  </h4>
-                  <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded font-medium">
-                    Live
-                  </span>
-                </div>
-                <div className="space-y-2.5 text-xs">
-                  <div className="flex items-start gap-2.5 p-2 rounded-xl bg-teal-50/60 border border-teal-100">
-                    <Calendar className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-teal-950">
-                        {metrics.todaysCheckIns} Arrivals Today
-                      </p>
-                      <p className="text-[11px] text-teal-700">Check-in desk opens at 12:00 PM</p>
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-sm sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Front Desk Alerts
+                      </h4>
+                      <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded font-medium">
+                        Live
+                      </span>
+                    </div>
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex items-start gap-2.5 p-2 rounded-xl bg-teal-50/60 border border-teal-100">
+                        <Calendar className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-teal-950">
+                            {metrics.todaysCheckIns} Arrivals Today
+                          </p>
+                          <p className="text-[11px] text-teal-700">Check-in desk opens at 12:00 PM</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2.5 p-2 rounded-xl bg-amber-50/60 border border-amber-100">
+                        <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-amber-950">
+                            {metrics.cleaningRooms} Rooms In Cleaning
+                          </p>
+                          <p className="text-[11px] text-amber-700">Housekeeping queued after morning checkouts</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2.5 p-2 rounded-xl bg-blue-50/60 border border-blue-100">
+                        <Bed className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-blue-950">
+                            {metrics.occupancyPercentage}% Occupancy
+                          </p>
+                          <p className="text-[11px] text-blue-700">{metrics.occupiedRooms} occupied of {metrics.totalRooms} rooms</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex items-start gap-2.5 p-2 rounded-xl bg-amber-50/60 border border-amber-100">
-                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-amber-950">
-                        {metrics.cleaningRooms} Rooms In Cleaning
-                      </p>
-                      <p className="text-[11px] text-amber-700">Housekeeping queued after morning checkouts</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2.5 p-2 rounded-xl bg-blue-50/60 border border-blue-100">
-                    <Bed className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-blue-950">
-                        {metrics.occupancyPercentage}% Occupancy
-                      </p>
-                      <p className="text-[11px] text-blue-700">{metrics.occupiedRooms} occupied of {metrics.totalRooms} rooms</p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
 
           {/* Profile & Role Switcher Menu */}
           <div ref={profileRef} className="relative">
@@ -535,8 +546,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="block text-xs font-bold text-slate-800 leading-tight">
                   {currentUser?.name || 'Demo User'}
                 </span>
-                <span className="block text-[10px] text-teal-600 font-semibold uppercase tracking-wider">
-                  {currentUser?.role === 'owner' ? 'Owner' : 'Receptionist'}
+                <span className={`block text-[10px] font-semibold uppercase tracking-wider ${
+                  isSuperAdmin ? 'text-purple-600' : 'text-teal-600'
+                }`}>
+                  {isSuperAdmin ? 'Super Admin' : currentUser?.role === 'owner' ? 'Owner' : 'Receptionist'}
                 </span>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
@@ -547,39 +560,43 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="px-2 py-1.5 border-b border-slate-100 mb-2">
                   <p className="text-xs font-bold text-slate-900">{currentUser?.name}</p>
                   <p className="text-[11px] text-slate-500">{currentUser?.email}</p>
-                  <span className="inline-block mt-1 text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold uppercase">
-                    Demo Role: {currentUser?.role}
+                  <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
+                    isSuperAdmin ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'
+                  }`}>
+                    {isSuperAdmin ? 'Platform Super Admin' : `Role: ${currentUser?.role}`}
                   </span>
                 </div>
 
-                {/* Quick Role Switcher */}
-                <div className="p-2 bg-slate-50 rounded-xl mb-2 border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                    Switch Demo Persona:
-                  </span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      onClick={() => handleSwitchRole('owner')}
-                      className={`text-xs font-semibold py-1.5 px-2 rounded-lg border text-center transition ${
-                        currentUser?.role === 'owner'
-                          ? 'bg-teal-600 text-white border-teal-700'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      Owner
-                    </button>
-                    <button
-                      onClick={() => handleSwitchRole('receptionist')}
-                      className={`text-xs font-semibold py-1.5 px-2 rounded-lg border text-center transition ${
-                        currentUser?.role === 'receptionist'
-                          ? 'bg-teal-600 text-white border-teal-700'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      Receptionist
-                    </button>
+                {/* Quick Role Switcher - ONLY for individual hotel operations */}
+                {!isSuperAdmin && (
+                  <div className="p-2 bg-slate-50 rounded-xl mb-2 border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                      Switch Demo Persona:
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => handleSwitchRole('owner')}
+                        className={`text-xs font-semibold py-1.5 px-2 rounded-lg border text-center transition ${
+                          currentUser?.role === 'owner'
+                            ? 'bg-teal-600 text-white border-teal-700'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        Owner
+                      </button>
+                      <button
+                        onClick={() => handleSwitchRole('receptionist')}
+                        className={`text-xs font-semibold py-1.5 px-2 rounded-lg border text-center transition ${
+                          currentUser?.role === 'receptionist'
+                            ? 'bg-teal-600 text-white border-teal-700'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        Receptionist
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <button
                   onClick={() => {
@@ -598,7 +615,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Expandable Mobile Search Bar */}
-      {mobileSearchOpen && (
+      {!isSuperAdmin && mobileSearchOpen && (
         <div className="md:hidden px-3 py-2 border-t border-slate-100 bg-slate-50 animate-in slide-in-from-top-2 duration-150">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

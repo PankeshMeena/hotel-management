@@ -25,7 +25,11 @@ export const Login: React.FC = () => {
 
       if (result.success) {
         success(result.message, 'Signed In Successfully');
-        navigate('/reservations');
+        if (result.user?.role === 'superadmin' || email.trim().toLowerCase() === 'superadmin@pms.com') {
+          navigate('/super-admin');
+        } else {
+          navigate('/reservations');
+        }
       } else {
         error(result.message, 'Authentication Failed');
       }

@@ -33,7 +33,7 @@ import { api } from '../lib/api';
 interface HotelContextType {
   // Auth
   currentUser: User | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string; user?: User }>;
   logout: () => void;
   hasRole: (role: Role) => boolean;
 
@@ -44,6 +44,8 @@ interface HotelContextType {
   switchHotel: (hotelId: string) => Promise<void>;
   createHotel: (hotelData: any) => Promise<{ success: boolean; message: string; hotel?: Hotel }>;
   updateHotel: (id: string, updates: Partial<Hotel>) => Promise<void>;
+  toggleHotelStatus: (id: string) => Promise<{ success: boolean; message: string; status?: string }>;
+  deleteHotel: (id: string, permanent?: boolean) => Promise<{ success: boolean; message: string }>;
 
   // DB Connection status
   isConnectedToDb: boolean;
@@ -312,6 +314,26 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [refreshData]);
 
+  const toggleHotelStatus = useCallback(async (id: string) => {
+    try {
+      const res = await api.post<{ success: boolean; message: string; status?: string }>(`/hotels/${id}/toggle-status`);
+      await refreshData();
+      return res;
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Failed to toggle hotel status' };
+    }
+  }, [refreshData]);
+
+  const deleteHotel = useCallback(async (id: string, permanent: boolean = true) => {
+    try {
+      const res = await api.delete<{ success: boolean; message: string }>(`/hotels/${id}?permanent=${permanent}`);
+      await refreshData();
+      return res;
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Failed to delete hotel' };
+    }
+  }, [refreshData]);
+
   // Initial load from MySQL on mount
   useEffect(() => {
     refreshData();
@@ -346,7 +368,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     api.post('/activity-logs', newEntry).catch(err => console.warn('Activity log sync error:', err));
   };
 
-  const login = async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
+  const login = async (email: string, pass: string): Promise<{ success: boolean; message: string; user?: User }> => {
     const cleanEmail = email.trim().toLowerCase();
 
     // First attempt real database login via backend
@@ -372,7 +394,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
         await refreshData();
         addActivityLog('User Login', 'Auth', res.user.id, `${res.user.name} signed in via MySQL database`);
-        return { success: true, message: `Welcome back, ${res.user.name}!` };
+        return { success: true, message: `Welcome back, ${res.user.name}!`, user: res.user };
       }
     } catch {
       // Fallback to local credential matching
@@ -389,20 +411,20 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
       setCurrentUser(superAdminUser);
       addActivityLog('User Login', 'Auth', superAdminUser.id, `${superAdminUser.name} signed in as Super Admin`);
-      return { success: true, message: `Welcome back, ${superAdminUser.name} (Platform Admin)!` };
+      return { success: true, message: `Welcome back, ${superAdminUser.name} (Platform Admin)!`, user: superAdminUser };
     }
 
     if (cleanEmail === 'owner@ujjainstay.demo' && pass === 'Owner@123') {
       const ownerUser = initialUsers[0];
       setCurrentUser(ownerUser);
       addActivityLog('User Login', 'Auth', ownerUser.id, `${ownerUser.name} signed in as Owner`);
-      return { success: true, message: `Welcome back, ${ownerUser.name}!` };
+      return { success: true, message: `Welcome back, ${ownerUser.name}!`, user: ownerUser };
     }
     if (cleanEmail === 'reception@ujjainstay.demo' && pass === 'Reception@123') {
       const recUser = initialUsers[1];
       setCurrentUser(recUser);
       addActivityLog('User Login', 'Auth', recUser.id, `${recUser.name} signed in as Receptionist`);
-      return { success: true, message: `Welcome back, ${recUser.name}!` };
+      return { success: true, message: `Welcome back, ${recUser.name}!`, user: recUser };
     }
     return { success: false, message: 'Invalid credentials. Please check demo email and password.' };
   };
@@ -1096,6 +1118,8 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         switchHotel,
         createHotel,
         updateHotel,
+        toggleHotelStatus,
+        deleteHotel,
         isConnectedToDb,
         refreshData,
         hotelSettings,

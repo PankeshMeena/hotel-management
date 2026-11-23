@@ -44,25 +44,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
-  const isOwner = currentUser?.role === 'owner' || currentUser?.role === 'superadmin';
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isOwner = currentUser?.role === 'owner';
 
-  const navItems = [
-    // { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, ownerOnly: false },
-    { name: 'Reservations', path: '/reservations', icon: CalendarDays, ownerOnly: false },
-    { name: 'Front Desk', path: '/front-desk', icon: ConciergeBell, ownerOnly: false },
-    // { name: 'Guests', path: '/guests', icon: Users, ownerOnly: false },
-    { name: 'Rooms & Types', path: '/rooms', icon: BedDouble, ownerOnly: false },
-    { name: 'Housekeeping', path: '/housekeeping', icon: Sparkles, ownerOnly: false },
-    { name: 'Payments & Billing', path: '/payments', icon: CreditCard, ownerOnly: false },
-    { name: 'Expenses', path: '/expenses', icon: Receipt, ownerOnly: false },
-    { name: 'Reports & Export', path: '/reports', icon: FileSpreadsheet, ownerOnly: false },
-    { name: 'Hotels / Tenants', path: '/hotels', icon: Building2, ownerOnly: true },
-    { name: 'Staff Management', path: '/staff', icon: UserCog, ownerOnly: true },
-    { name: 'Hotel Settings', path: '/settings', icon: Settings, ownerOnly: true },
-    { name: 'Activity Log', path: '/activity-log', icon: History, ownerOnly: false },
-  ];
-
-  const visibleNavItems = navItems.filter(item => !item.ownerOnly || isOwner);
+  // Super Admin ONLY sees Hotels Management. Owners/Receptionists see their hotel modules.
+  const visibleNavItems = isSuperAdmin
+    ? [{ name: 'Hotels Management', path: '/super-admin', icon: Building2, ownerOnly: false }]
+    : [
+        // { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, ownerOnly: false },
+        { name: 'Reservations', path: '/reservations', icon: CalendarDays, ownerOnly: false },
+        { name: 'Front Desk', path: '/front-desk', icon: ConciergeBell, ownerOnly: false },
+        // { name: 'Guests', path: '/guests', icon: Users, ownerOnly: false },
+        { name: 'Rooms & Types', path: '/rooms', icon: BedDouble, ownerOnly: false },
+        { name: 'Housekeeping', path: '/housekeeping', icon: Sparkles, ownerOnly: false },
+        { name: 'Payments & Billing', path: '/payments', icon: CreditCard, ownerOnly: false },
+        { name: 'Expenses', path: '/expenses', icon: Receipt, ownerOnly: false },
+        { name: 'Reports & Export', path: '/reports', icon: FileSpreadsheet, ownerOnly: false },
+        { name: 'Staff Management', path: '/staff', icon: UserCog, ownerOnly: true },
+        { name: 'Hotel Settings', path: '/settings', icon: Settings, ownerOnly: true },
+        { name: 'Activity Log', path: '/activity-log', icon: History, ownerOnly: false },
+      ].filter(item => !item.ownerOnly || isOwner);
 
   const handleResetConfirm = () => {
     resetDemoData();
@@ -93,18 +94,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800 bg-slate-950/40">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0">
-              <Hotel className="w-5 h-5 text-teal-400" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              isSuperAdmin
+                ? 'bg-purple-500/20 border border-purple-500/30 text-purple-400'
+                : 'bg-teal-500/20 border border-teal-500/30 text-teal-400'
+            }`}>
+              {isSuperAdmin ? <Shield className="w-5 h-5 text-purple-400" /> : <Hotel className="w-5 h-5 text-teal-400" />}
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <span className="font-bold text-sm text-white tracking-tight flex items-center gap-1.5 truncate">
-                  <span className="truncate">{currentHotel?.name || hotelSettings.name}</span>
-                  <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-medium border border-teal-500/30 shrink-0">
-                    SaaS
-                  </span>
-                </span>
-                <p className="text-[11px] text-slate-400 truncate">{currentHotel?.city || hotelSettings.city} • Multi-Tenant</p>
+                {isSuperAdmin ? (
+                  <>
+                    <span className="font-bold text-sm text-white tracking-tight flex items-center gap-1.5 truncate">
+                      <span>Hotel Platform</span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-bold border border-purple-500/30 shrink-0">
+                        Super Admin
+                      </span>
+                    </span>
+                    <p className="text-[11px] text-slate-400 truncate">Centralized Control</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold text-sm text-white tracking-tight flex items-center gap-1.5 truncate">
+                      <span className="truncate">{currentHotel?.name || hotelSettings.name}</span>
+                      <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-medium border border-teal-500/30 shrink-0">
+                        PMS
+                      </span>
+                    </span>
+                    <p className="text-[11px] text-slate-400 truncate">{currentHotel?.city || hotelSettings.city} • Operations</p>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -130,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="flex items-center gap-1 mt-0.5">
                 <Shield className="w-3 h-3 text-teal-400" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-teal-300">
-                  {currentUser.role === 'owner' ? 'Owner / Admin' : 'Receptionist'}
+                  {currentUser.role === 'superadmin' ? 'Super Admin' : (currentUser.role === 'owner' ? 'Owner / Admin' : 'Receptionist')}
                 </span>
               </div>
             </div>
@@ -149,7 +168,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-teal-600 text-white shadow-md shadow-teal-900/40'
+                      ? isSuperAdmin
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40'
+                        : 'bg-teal-600 text-white shadow-md shadow-teal-900/40'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
                   }`
                 }
@@ -164,15 +185,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Footer Actions */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/30 space-y-1">
-          {/* Reset Demo Data button (owner-preferred or quick demo reset) */}
-          <button
-            onClick={() => setResetDialogOpen(true)}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-amber-300 hover:bg-slate-800/80 transition"
-            title="Restore original seed data"
-          >
-            <RotateCcw className={`w-4 h-4 shrink-0 text-amber-400 ${collapsed ? 'mx-auto' : ''}`} />
-            {!collapsed && <span>Reset Demo Data</span>}
-          </button>
+          {/* Reset Demo Data button (hidden for superadmin) */}
+          {!isSuperAdmin && (
+            <button
+              onClick={() => setResetDialogOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-amber-300 hover:bg-slate-800/80 transition"
+              title="Restore original seed data"
+            >
+              <RotateCcw className={`w-4 h-4 shrink-0 text-amber-400 ${collapsed ? 'mx-auto' : ''}`} />
+              {!collapsed && <span>Reset Demo Data</span>}
+            </button>
+          )}
 
           {/* Logout button */}
           <button

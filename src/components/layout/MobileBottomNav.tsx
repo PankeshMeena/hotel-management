@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useHotel } from '../../context/HotelContext';
 import {
   CalendarDays,
   ConciergeBell,
@@ -7,6 +8,7 @@ import {
   Users,
   Plus,
   Menu,
+  Building2,
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
@@ -18,6 +20,51 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenWalkIn,
   onOpenMenu,
 }) => {
+  const { currentUser } = useHotel();
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+
+  if (isSuperAdmin) {
+    return (
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg lg:hidden no-print safe-bottom"
+        aria-label="Super Admin Bottom Navigation"
+      >
+        <div className="flex items-center justify-around h-15 px-6 max-w-md mx-auto">
+          {/* Hotels Management */}
+          <NavLink
+            to="/super-admin"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center flex-1 py-1 text-[11px] font-medium transition ${
+                isActive ? 'text-purple-700 font-bold' : 'text-slate-500 hover:text-slate-900'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <div className={`p-1.5 rounded-xl transition ${isActive ? 'bg-purple-100' : ''}`}>
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <span className="mt-0.5 tracking-tight">Hotels</span>
+              </>
+            )}
+          </NavLink>
+
+          {/* Menu */}
+          <button
+            onClick={onOpenMenu}
+            className="flex flex-col items-center justify-center flex-1 py-1 text-[11px] font-medium text-slate-500 hover:text-slate-900 transition"
+            aria-label="Open More Options"
+          >
+            <div className="p-1.5 rounded-xl">
+              <Menu className="w-5 h-5" />
+            </div>
+            <span className="mt-0.5 tracking-tight">Menu</span>
+          </button>
+        </div>
+      </nav>
+    );
+  }
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg lg:hidden no-print safe-bottom"

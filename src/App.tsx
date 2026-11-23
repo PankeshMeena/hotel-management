@@ -17,6 +17,7 @@ import { Expenses } from './pages/Expenses';
 import { Reports } from './pages/Reports';
 import { StaffPage } from './pages/Staff';
 import { HotelsPage } from './pages/Hotels';
+import { SuperAdminHotels } from './pages/SuperAdminHotels';
 import { SettingsPage } from './pages/Settings';
 import { ActivityLogPage } from './pages/ActivityLog';
 import { NotFound } from './pages/NotFound';
@@ -30,10 +31,30 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-// Root index redirect
+// Root index redirect based on role
 const RootRedirect: React.FC = () => {
   const { currentUser } = useHotel();
-  return currentUser ? <Navigate to="/reservations" replace /> : <Navigate to="/login" replace />;
+  if (!currentUser) return <Navigate to="/login" replace />;
+  if (currentUser.role === 'superadmin') return <Navigate to="/super-admin" replace />;
+  return <Navigate to="/reservations" replace />;
+};
+
+// Hotel Operational Guard: superadmin is NOT allowed to view operational dashboards/data
+const HotelRouteGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useHotel();
+  if (currentUser?.role === 'superadmin') {
+    return <Navigate to="/super-admin" replace />;
+  }
+  return <>{children}</>;
+};
+
+// Super Admin Guard: ONLY superadmin is allowed to access platform hotel management
+const SuperAdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useHotel();
+  if (currentUser?.role !== 'superadmin') {
+    return <Navigate to="/reservations" replace />;
+  }
+  return <>{children}</>;
 };
 
 function AppRoutes() {
@@ -50,21 +71,31 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
+        {/* Super Admin Platform Hotel Management */}
+        <Route
+          path="/super-admin"
+          element={
+            <SuperAdminGuard>
+              <SuperAdminHotels />
+            </SuperAdminGuard>
+          }
+        />
+
+        {/* Individual Hotel Operational Routes (Owner & Receptionist ONLY) */}
         <Route path="/dashboard" element={<Navigate to="/reservations" replace />} />
-        <Route path="/reservations" element={<Reservations />} />
-        <Route path="/front-desk" element={<FrontDesk />} />
-        {/* <Route path="/guests" element={<Guests />} /> */}
+        <Route path="/reservations" element={<HotelRouteGuard><Reservations /></HotelRouteGuard>} />
+        <Route path="/front-desk" element={<HotelRouteGuard><FrontDesk /></HotelRouteGuard>} />
         <Route path="/guests" element={<Navigate to="/reservations" replace />} />
-        <Route path="/rooms" element={<Rooms />} />
-        <Route path="/room-types" element={<Rooms />} />
-        <Route path="/housekeeping" element={<Housekeeping />} />
-        <Route path="/payments" element={<Payments />} />
-        <Route path="/expenses" element={<Expenses />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/staff" element={<StaffPage />} />
-        <Route path="/hotels" element={<HotelsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/activity-log" element={<ActivityLogPage />} />
+        <Route path="/rooms" element={<HotelRouteGuard><Rooms /></HotelRouteGuard>} />
+        <Route path="/room-types" element={<Navigate to="/rooms" replace />} />
+        <Route path="/housekeeping" element={<HotelRouteGuard><Housekeeping /></HotelRouteGuard>} />
+        <Route path="/payments" element={<HotelRouteGuard><Payments /></HotelRouteGuard>} />
+        <Route path="/expenses" element={<HotelRouteGuard><Expenses /></HotelRouteGuard>} />
+        <Route path="/reports" element={<HotelRouteGuard><Reports /></HotelRouteGuard>} />
+        <Route path="/staff" element={<HotelRouteGuard><StaffPage /></HotelRouteGuard>} />
+        <Route path="/hotels" element={<Navigate to="/super-admin" replace />} />
+        <Route path="/settings" element={<HotelRouteGuard><SettingsPage /></HotelRouteGuard>} />
+        <Route path="/activity-log" element={<HotelRouteGuard><ActivityLogPage /></HotelRouteGuard>} />
       </Route>
 
       {/* 404 Route */}
