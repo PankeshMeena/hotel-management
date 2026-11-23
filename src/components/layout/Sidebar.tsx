@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Shield,
   Hotel,
+  Building2,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,13 +38,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   setMobileOpen,
 }) => {
-  const { currentUser, logout, hasRole, resetDemoData, hotelSettings } = useHotel();
+  const { currentUser, logout, hasRole, resetDemoData, hotelSettings, currentHotel } = useHotel();
   const { success } = useToast();
   const navigate = useNavigate();
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
-  const isOwner = currentUser?.role === 'owner';
+  const isOwner = currentUser?.role === 'owner' || currentUser?.role === 'superadmin';
 
   const navItems = [
     // { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, ownerOnly: false },
@@ -55,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { name: 'Payments & Billing', path: '/payments', icon: CreditCard, ownerOnly: false },
     { name: 'Expenses', path: '/expenses', icon: Receipt, ownerOnly: false },
     { name: 'Reports & Export', path: '/reports', icon: FileSpreadsheet, ownerOnly: false },
+    { name: 'Hotels / Tenants', path: '/hotels', icon: Building2, ownerOnly: true },
     { name: 'Staff Management', path: '/staff', icon: UserCog, ownerOnly: true },
     { name: 'Hotel Settings', path: '/settings', icon: Settings, ownerOnly: true },
     { name: 'Activity Log', path: '/activity-log', icon: History, ownerOnly: false },
@@ -96,13 +98,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <span className="font-bold text-base text-white tracking-tight flex items-center gap-1.5">
-                  UjjainStay
-                  <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-medium border border-teal-500/30">
-                    PMS
+                <span className="font-bold text-sm text-white tracking-tight flex items-center gap-1.5 truncate">
+                  <span className="truncate">{currentHotel?.name || hotelSettings.name}</span>
+                  <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-medium border border-teal-500/30 shrink-0">
+                    SaaS
                   </span>
                 </span>
-                <p className="text-[11px] text-slate-400 truncate">Reception & Operations</p>
+                <p className="text-[11px] text-slate-400 truncate">{currentHotel?.city || hotelSettings.city} • Multi-Tenant</p>
               </div>
             )}
           </div>

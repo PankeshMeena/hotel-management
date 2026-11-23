@@ -4,8 +4,10 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDatabase } from './db.js';
+import { tenantMiddleware } from './middleware/tenant.js';
 
 // Routes
+import hotelsRoutes from './routes/hotels.js';
 import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
 import roomTypesRoutes from './routes/roomTypes.js';
@@ -32,13 +34,16 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Tenant Extraction Middleware
+app.use(tenantMiddleware);
+
 // Request logger
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
     if (req.originalUrl.startsWith('/api')) {
-      console.log(`[${req.method}] ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
+      console.log(`[${req.method}] ${req.originalUrl} (${req.hotelId || 'no-tenant'}) - ${res.statusCode} (${duration}ms)`);
     }
   });
   next();
@@ -48,13 +53,16 @@ app.use((req, res, next) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
+    architecture: 'Multi-Tenant SaaS Hotel PMS',
     database: 'MySQL / MariaDB',
     connectedDatabase: process.env.DB_NAME || 'hotel_pms',
+    tenant: req.hotelId,
     timestamp: new Date().toISOString()
   });
 });
 
 // Mount Routes
+app.use('/api/hotels', hotelsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/room-types', roomTypesRoutes);
@@ -80,9 +88,10 @@ async function start() {
     await initDatabase();
     app.listen(PORT, () => {
       console.log(`\n======================================================`);
-      console.log(`🚀 UjjainStay Express Backend running on: http://localhost:${PORT}`);
+      console.log(`🚀 Multi-Tenant PMS Express Backend running on: http://localhost:${PORT}`);
       console.log(`📦 Database: MySQL (Database: "${process.env.DB_NAME || 'hotel_pms'}")`);
       console.log(`🌐 API Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`🏨 Multi-Tenant Hotels API: http://localhost:${PORT}/api/hotels`);
       console.log(`======================================================\n`);
     });
   } catch (err) {

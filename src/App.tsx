@@ -16,6 +16,7 @@ import { Payments } from './pages/Payments';
 import { Expenses } from './pages/Expenses';
 import { Reports } from './pages/Reports';
 import { StaffPage } from './pages/Staff';
+import { HotelsPage } from './pages/Hotels';
 import { SettingsPage } from './pages/Settings';
 import { ActivityLogPage } from './pages/ActivityLog';
 import { NotFound } from './pages/NotFound';
@@ -61,6 +62,7 @@ function AppRoutes() {
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/staff" element={<StaffPage />} />
+        <Route path="/hotels" element={<HotelsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/activity-log" element={<ActivityLogPage />} />
       </Route>

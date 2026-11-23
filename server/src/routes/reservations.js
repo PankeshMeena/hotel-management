@@ -8,12 +8,14 @@ function datesOverlap(in1, out1, in2, out2) {
   return !(new Date(out1) <= new Date(in2) || new Date(in1) >= new Date(out2));
 }
 
-// GET all reservations
+// GET all reservations for current tenant
 router.get('/', async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM reservations ORDER BY created_at DESC');
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
+    const rows = await query('SELECT * FROM reservations WHERE hotel_id = ? ORDER BY created_at DESC', [hotelId]);
     const reservations = rows.map(r => ({
       id: r.id,
+      hotelId: r.hotel_id,
       guestId: r.guest_id,
       guestName: r.guest_name,
       guestMobile: r.guest_mobile,
@@ -52,17 +54,18 @@ router.get('/', async (req, res) => {
 // POST create reservation
 router.post('/', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const data = req.body;
     const targetRooms = (data.assignedRoomNumbers && data.assignedRoomNumbers.length > 0)
       ? data.assignedRoomNumbers
       : [data.roomNumber];
 
-    // Conflict check against active reservations
+    // Conflict check against active reservations within this hotel
     const active = await query(`
       SELECT id, guest_name, check_in_date, check_out_date, room_number, assigned_room_numbers
       FROM reservations
-      WHERE status IN ('Confirmed', 'Checked In', 'Pending')
-    `);
+      WHERE hotel_id = ? AND status IN ('Confirmed', 'Checked In', 'Pending')
+    `, [hotelId]);
 
     for (const r of active) {
       const rRooms = r.assigned_room_numbers ? (typeof r.assigned_room_numbers === 'string' ? JSON.parse(r.assigned_room_numbers) : r.assigned_room_numbers) : [r.room_number];
@@ -76,20 +79,20 @@ router.post('/', async (req, res) => {
     }
 
     // Generate ID
-    const countRes = await query('SELECT COUNT(*) as count FROM reservations');
+    const countRes = await query('SELECT COUNT(*) as count FROM reservations WHERE hotel_id = ?', [hotelId]);
     const newId = `RES-${1000 + countRes[0].count + 1}`;
     const createdAt = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
     await query(`
       INSERT INTO reservations (
-        id, guest_id, guest_name, guest_mobile, guest_email, room_type_id, room_number,
+        id, hotel_id, guest_id, guest_name, guest_mobile, guest_email, room_type_id, room_number,
         assigned_room_numbers, members, adults, children, check_in_date, check_out_date,
         number_of_nights, rate_per_night, discount, tax_amount, total_amount, advance_paid,
         balance_amount, booking_source, status, id_document_photo, special_requests,
         created_by, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      newId, data.guestId, data.guestName, data.guestMobile, data.guestEmail || null,
+      newId, hotelId, data.guestId, data.guestName, data.guestMobile, data.guestEmail || null,
       data.roomTypeId, data.roomNumber, JSON.stringify(targetRooms),
       JSON.stringify(data.members || []), data.adults || 1, data.children || 0,
       data.checkInDate, data.checkOutDate, data.numberOfNights || 1, data.ratePerNight,
@@ -103,8 +106,8 @@ router.post('/', async (req, res) => {
       for (const rm of targetRooms) {
         await query(`
           UPDATE rooms SET status = 'Reserved', current_reservation_id = ?
-          WHERE room_number = ? AND status = 'Available'
-        `, [newId, rm]);
+          WHERE hotel_id = ? AND room_number = ? AND status = 'Available'
+        `, [newId, hotelId, rm]);
       }
     }
 
@@ -112,68 +115,45 @@ router.post('/', async (req, res) => {
     if (data.advancePaid && data.advancePaid > 0) {
       const txId = `TXN-${Date.now()}`;
       await query(`
-        INSERT INTO transactions (id, reservation_id, guest_name, room_number, amount, type, method, notes, recorded_by, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO transactions (id, hotel_id, reservation_id, guest_name, room_number, amount, type, method, notes, recorded_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        txId, newId, data.guestName, data.roomNumber, data.advancePaid, 'Advance',
+        txId, hotelId, newId, data.guestName, data.roomNumber, data.advancePaid, 'Advance',
         data.paymentMethod || 'Cash', 'Advance token received at booking', data.createdBy || 'Front Desk', createdAt
       ]);
     }
 
     // Activity log
     await query(`
-      INSERT INTO activity_logs (id, timestamp, user_name, action, entity_type, entity_id, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO activity_logs (id, hotel_id, timestamp, user_name, action, entity_type, entity_id, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      `LOG-${Date.now()}`, createdAt, data.createdBy || 'Front Desk',
+      `LOG-${Date.now()}`, hotelId, createdAt, data.createdBy || 'Front Desk',
       'Reservation Created', 'Reservation', newId,
       `Created reservation ${newId} for ${data.guestName} in Room ${targetRooms.join(', ')} (${data.checkInDate} to ${data.checkOutDate}).`
     ]);
 
     const createdRes = {
       id: newId,
-      guestId: data.guestId,
-      guestName: data.guestName,
-      guestMobile: data.guestMobile,
-      guestEmail: data.guestEmail || null,
-      roomTypeId: data.roomTypeId,
-      roomNumber: data.roomNumber,
+      hotelId,
+      ...data,
       assignedRoomNumbers: targetRooms,
-      members: data.members || [],
-      adults: data.adults || 1,
-      children: data.children || 0,
-      checkInDate: data.checkInDate,
-      checkOutDate: data.checkOutDate,
-      numberOfNights: data.numberOfNights || 1,
-      ratePerNight: data.ratePerNight,
-      discount: data.discount || 0,
-      taxAmount: data.taxAmount || 0,
-      totalAmount: data.totalAmount,
-      advancePaid: data.advancePaid || 0,
-      balanceAmount: data.balanceAmount || 0,
-      bookingSource: data.bookingSource || 'Direct Walk-in',
-      status: data.status || 'Confirmed',
-      idDocumentPhoto: data.idDocumentPhoto || null,
-      specialRequests: data.specialRequests || null,
-      createdBy: data.createdBy || 'Front Desk',
       createdAt,
     };
 
-    return res.status(201).json({
-      success: true,
-      message: `Reservation ${newId} created successfully.`,
-      reservation: createdRes
-    });
+    return res.status(201).json({ success: true, message: 'Reservation created successfully', reservation: createdRes });
   } catch (err) {
+    console.error('Create reservation error:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// POST Check-in reservation
-router.post('/:id/checkin', async (req, res) => {
+// POST Check-in existing reservation
+router.post('/:id/check-in', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const { id } = req.params;
-    const reservations = await query('SELECT * FROM reservations WHERE id = ?', [id]);
+    const reservations = await query('SELECT * FROM reservations WHERE id = ? AND hotel_id = ?', [id, hotelId]);
     if (reservations.length === 0) {
       return res.status(404).json({ success: false, message: 'Reservation not found.' });
     }
@@ -184,8 +164,8 @@ router.post('/:id/checkin', async (req, res) => {
 
     // Update reservation
     await query(`
-      UPDATE reservations SET status = 'Checked In', actual_check_in_time = ? WHERE id = ?
-    `, [nowTime, id]);
+      UPDATE reservations SET status = 'Checked In', actual_check_in_time = ? WHERE id = ? AND hotel_id = ?
+    `, [nowTime, id, hotelId]);
 
     // Update rooms to Occupied
     for (const rm of assignedRooms) {
@@ -195,16 +175,16 @@ router.post('/:id/checkin', async (req, res) => {
           current_guest_id = ?,
           current_guest_name = ?,
           current_reservation_id = ?
-        WHERE room_number = ?
-      `, [r.guest_id, r.guest_name, id, rm]);
+        WHERE hotel_id = ? AND room_number = ?
+      `, [r.guest_id, r.guest_name, id, hotelId, rm]);
     }
 
     // Activity log
     await query(`
-      INSERT INTO activity_logs (id, timestamp, user_name, action, entity_type, entity_id, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO activity_logs (id, hotel_id, timestamp, user_name, action, entity_type, entity_id, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      `LOG-${Date.now()}`, nowTime, 'Front Desk',
+      `LOG-${Date.now()}`, hotelId, nowTime, 'Front Desk',
       'Guest Check-In', 'Reservation', id,
       `Guest ${r.guest_name} checked in to Room ${assignedRooms.join(', ')}.`
     ]);
@@ -218,10 +198,11 @@ router.post('/:id/checkin', async (req, res) => {
 // POST Cancel reservation
 router.post('/:id/cancel', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const { id } = req.params;
     const { reason } = req.body;
 
-    const reservations = await query('SELECT * FROM reservations WHERE id = ?', [id]);
+    const reservations = await query('SELECT * FROM reservations WHERE id = ? AND hotel_id = ?', [id, hotelId]);
     if (reservations.length === 0) {
       return res.status(404).json({ success: false, message: 'Reservation not found.' });
     }
@@ -230,23 +211,23 @@ router.post('/:id/cancel', async (req, res) => {
     const assignedRooms = r.assigned_room_numbers ? (typeof r.assigned_room_numbers === 'string' ? JSON.parse(r.assigned_room_numbers) : r.assigned_room_numbers) : [r.room_number];
 
     await query(`
-      UPDATE reservations SET status = 'Cancelled', cancellation_reason = ? WHERE id = ?
-    `, [reason || 'Guest requested cancellation', id]);
+      UPDATE reservations SET status = 'Cancelled', cancellation_reason = ? WHERE id = ? AND hotel_id = ?
+    `, [reason || 'Guest requested cancellation', id, hotelId]);
 
     // Release rooms back to Available if they were Reserved for this booking
     for (const rm of assignedRooms) {
       await query(`
         UPDATE rooms SET status = 'Available', current_reservation_id = NULL
-        WHERE room_number = ? AND current_reservation_id = ?
-      `, [rm, id]);
+        WHERE hotel_id = ? AND room_number = ? AND current_reservation_id = ?
+      `, [hotelId, rm, id]);
     }
 
     // Activity log
     await query(`
-      INSERT INTO activity_logs (id, timestamp, user_name, action, entity_type, entity_id, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO activity_logs (id, hotel_id, timestamp, user_name, action, entity_type, entity_id, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      `LOG-${Date.now()}`, new Date().toISOString().replace('T', ' ').slice(0, 16),
+      `LOG-${Date.now()}`, hotelId, new Date().toISOString().replace('T', ' ').slice(0, 16),
       'Front Desk', 'Reservation Cancelled', 'Reservation', id,
       `Reservation ${id} for ${r.guest_name} cancelled. Reason: ${reason || 'Guest requested'}`
     ]);
@@ -260,30 +241,30 @@ router.post('/:id/cancel', async (req, res) => {
 // POST Walk-in Check-in
 router.post('/walkin', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const payload = req.body;
     const guestData = payload.guest;
 
-    // Check or create guest
+    // Check or create guest for this hotel
     let guestId = guestData.id;
     if (!guestId) {
-      const existing = await query('SELECT id FROM guests WHERE mobile = ?', [guestData.mobile]);
+      const existing = await query('SELECT id FROM guests WHERE hotel_id = ? AND mobile = ?', [hotelId, guestData.mobile]);
       if (existing.length > 0) {
         guestId = existing[0].id;
-        // update photo if provided
         if (guestData.idDocumentPhoto) {
-          await query('UPDATE guests SET id_document_photo = ? WHERE id = ?', [guestData.idDocumentPhoto, guestId]);
+          await query('UPDATE guests SET id_document_photo = ? WHERE id = ? AND hotel_id = ?', [guestData.idDocumentPhoto, guestId, hotelId]);
         }
       } else {
-        const countRes = await query('SELECT COUNT(*) as count FROM guests');
+        const countRes = await query('SELECT COUNT(*) as count FROM guests WHERE hotel_id = ?', [hotelId]);
         guestId = `GST-${(countRes[0].count + 1).toString().padStart(3, '0')}`;
         await query(`
           INSERT INTO guests (
-            id, full_name, mobile, email, address, city, state, country,
+            id, hotel_id, full_name, mobile, email, address, city, state, country,
             id_document_type, id_document_number, id_verification_status, id_document_photo,
             emergency_contact, notes, total_stays, total_spent, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-          guestId, guestData.fullName, guestData.mobile, guestData.email || null,
+          guestId, hotelId, guestData.fullName, guestData.mobile, guestData.email || null,
           guestData.address || '', guestData.city || '', guestData.state || '', guestData.country || 'India',
           guestData.idDocumentType || 'Aadhaar', guestData.idDocumentNumber || '',
           guestData.idVerificationStatus || 'Verified', guestData.idDocumentPhoto || null,
@@ -294,7 +275,7 @@ router.post('/walkin', async (req, res) => {
     }
 
     // Reservation creation
-    const countRes = await query('SELECT COUNT(*) as count FROM reservations');
+    const countRes = await query('SELECT COUNT(*) as count FROM reservations WHERE hotel_id = ?', [hotelId]);
     const newResId = `RES-${1000 + countRes[0].count + 1}`;
     const nowTime = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
@@ -306,14 +287,14 @@ router.post('/walkin', async (req, res) => {
 
     await query(`
       INSERT INTO reservations (
-        id, guest_id, guest_name, guest_mobile, guest_email, room_type_id, room_number,
+        id, hotel_id, guest_id, guest_name, guest_mobile, guest_email, room_type_id, room_number,
         assigned_room_numbers, adults, children, check_in_date, check_out_date,
         number_of_nights, rate_per_night, discount, tax_amount, total_amount, advance_paid,
         balance_amount, booking_source, status, id_document_photo, actual_check_in_time,
         special_requests, created_by, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      newResId, guestId, guestData.fullName, guestData.mobile, guestData.email || null,
+      newResId, hotelId, guestId, guestData.fullName, guestData.mobile, guestData.email || null,
       payload.roomTypeId, payload.roomNumber, JSON.stringify([payload.roomNumber]),
       payload.adults || 1, payload.children || 0, payload.checkInDate, payload.checkOutDate,
       nights, payload.ratePerNight, payload.discount || 0, taxAmount, totalAmount,
@@ -329,27 +310,27 @@ router.post('/walkin', async (req, res) => {
         current_guest_id = ?,
         current_guest_name = ?,
         current_reservation_id = ?
-      WHERE room_number = ?
-    `, [guestId, guestData.fullName, newResId, payload.roomNumber]);
+      WHERE hotel_id = ? AND room_number = ?
+    `, [guestId, guestData.fullName, newResId, hotelId, payload.roomNumber]);
 
     // Record payment if advance received
     if (payload.advancePaid && payload.advancePaid > 0) {
       const txId = `TXN-${Date.now()}`;
       await query(`
-        INSERT INTO transactions (id, reservation_id, guest_name, room_number, amount, type, method, notes, recorded_by, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO transactions (id, hotel_id, reservation_id, guest_name, room_number, amount, type, method, notes, recorded_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        txId, newResId, guestData.fullName, payload.roomNumber, payload.advancePaid,
+        txId, hotelId, newResId, guestData.fullName, payload.roomNumber, payload.advancePaid,
         'Advance', payload.paymentMethod || 'Cash', 'Walk-in instant check-in payment', 'Front Desk', nowTime
       ]);
     }
 
     // Activity log
     await query(`
-      INSERT INTO activity_logs (id, timestamp, user_name, action, entity_type, entity_id, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO activity_logs (id, hotel_id, timestamp, user_name, action, entity_type, entity_id, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      `LOG-${Date.now()}`, nowTime, 'Front Desk', 'Walk-in Check-In', 'Reservation', newResId,
+      `LOG-${Date.now()}`, hotelId, nowTime, 'Front Desk', 'Walk-in Check-In', 'Reservation', newResId,
       `Walk-in check-in completed for ${guestData.fullName} in Room ${payload.roomNumber}. Total: ₹${totalAmount}`
     ]);
 
@@ -366,10 +347,11 @@ router.post('/walkin', async (req, res) => {
 // POST Check-out
 router.post('/:id/checkout', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const { id } = req.params;
     const { finalPayment } = req.body;
 
-    const reservations = await query('SELECT * FROM reservations WHERE id = ?', [id]);
+    const reservations = await query('SELECT * FROM reservations WHERE id = ? AND hotel_id = ?', [id, hotelId]);
     if (reservations.length === 0) {
       return res.status(404).json({ success: false, message: 'Reservation not found.' });
     }
@@ -382,10 +364,10 @@ router.post('/:id/checkout', async (req, res) => {
     if (finalPayment && finalPayment.amount > 0) {
       const txId = `TXN-${Date.now()}`;
       await query(`
-        INSERT INTO transactions (id, reservation_id, guest_name, room_number, amount, type, method, notes, recorded_by, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO transactions (id, hotel_id, reservation_id, guest_name, room_number, amount, type, method, notes, recorded_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        txId, id, r.guest_name, r.room_number, finalPayment.amount, 'Payment',
+        txId, hotelId, id, r.guest_name, r.room_number, finalPayment.amount, 'Payment',
         finalPayment.method || 'Cash', finalPayment.notes || 'Final folio settlement at check-out',
         'Front Desk', nowTime
       ]);
@@ -397,8 +379,8 @@ router.post('/:id/checkout', async (req, res) => {
         status = 'Checked Out',
         actual_check_out_time = ?,
         balance_amount = 0
-      WHERE id = ?
-    `, [nowTime, id]);
+      WHERE id = ? AND hotel_id = ?
+    `, [nowTime, id, hotelId]);
 
     // Free rooms and assign Housekeeping cleaning task
     for (const rm of assignedRooms) {
@@ -410,15 +392,15 @@ router.post('/:id/checkout', async (req, res) => {
           current_guest_name = NULL,
           current_reservation_id = NULL,
           maintenance_notes = ?
-        WHERE room_number = ?
-      `, [`Checked out on ${nowTime}`, rm]);
+        WHERE hotel_id = ? AND room_number = ?
+      `, [`Checked out on ${nowTime}`, hotelId, rm]);
 
       // Create Housekeeping Task
       const hkId = `HK-${Date.now().toString().slice(-4)}`;
       await query(`
-        INSERT INTO housekeeping_tasks (id, room_number, cleaning_status, assigned_staff, priority, task_creation_time, notes)
-        VALUES (?, ?, 'Dirty', 'Housekeeping Team', 'High', ?, 'Post check-out thorough sanitation and linen change')
-      `, [hkId, rm, nowTime]);
+        INSERT INTO housekeeping_tasks (id, hotel_id, room_number, cleaning_status, assigned_staff, priority, task_creation_time, notes)
+        VALUES (?, ?, ?, 'Dirty', 'Housekeeping Team', 'High', ?, 'Post check-out thorough sanitation and linen change')
+      `, [hkId, hotelId, rm, nowTime]);
     }
 
     // Update guest total stays & spend
@@ -426,15 +408,15 @@ router.post('/:id/checkout', async (req, res) => {
       UPDATE guests SET
         total_stays = total_stays + 1,
         total_spent = total_spent + ?
-      WHERE id = ?
-    `, [r.total_amount, r.guest_id]);
+      WHERE id = ? AND hotel_id = ?
+    `, [r.total_amount, r.guest_id, hotelId]);
 
     // Activity log
     await query(`
-      INSERT INTO activity_logs (id, timestamp, user_name, action, entity_type, entity_id, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO activity_logs (id, hotel_id, timestamp, user_name, action, entity_type, entity_id, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      `LOG-${Date.now()}`, nowTime, 'Front Desk', 'Guest Check-Out', 'Reservation', id,
+      `LOG-${Date.now()}`, hotelId, nowTime, 'Front Desk', 'Guest Check-Out', 'Reservation', id,
       `Guest ${r.guest_name} completed check-out from Room ${assignedRooms.join(', ')}. Room marked for Housekeeping.`
     ]);
 
@@ -450,6 +432,7 @@ router.post('/:id/checkout', async (req, res) => {
 // PUT update reservation
 router.put('/:id', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const { id } = req.params;
     const updates = req.body;
 
@@ -468,8 +451,8 @@ router.put('/:id', async (req, res) => {
     if (updates.balanceAmount !== undefined) { fields.push('balance_amount = ?'); values.push(updates.balanceAmount); }
 
     if (fields.length > 0) {
-      values.push(id);
-      await query(`UPDATE reservations SET ${fields.join(', ')} WHERE id = ?`, values);
+      values.push(id, hotelId);
+      await query(`UPDATE reservations SET ${fields.join(', ')} WHERE id = ? AND hotel_id = ?`, values);
     }
 
     return res.json({ success: true, message: `Reservation ${id} updated successfully.` });

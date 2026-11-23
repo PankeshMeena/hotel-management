@@ -35,9 +35,15 @@ export const Login: React.FC = () => {
     }
   };
 
-  const fillCredentials = (role: 'owner' | 'receptionist') => {
-    if (role === 'owner') {
+  const fillCredentials = (type: 'superadmin' | 'owner' | 'shanti_owner' | 'receptionist') => {
+    if (type === 'superadmin') {
+      setEmail('superadmin@pms.com');
+      setPassword('Super@123');
+    } else if (type === 'owner') {
       setEmail('owner@ujjainstay.demo');
+      setPassword('Owner@123');
+    } else if (type === 'shanti_owner') {
+      setEmail('owner@shantipalace.demo');
       setPassword('Owner@123');
     } else {
       setEmail('reception@ujjainstay.demo');
@@ -52,18 +58,23 @@ export const Login: React.FC = () => {
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Login Card */}
-      <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+      <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
         {/* Top Header */}
         <div className="p-8 pb-6 bg-slate-950 text-white text-center border-b border-slate-800">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 text-teal-400 mb-3 shadow-inner">
             <Hotel className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">UjjainStay</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Cloud Hotel PMS</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Cloud Hotel Reception & Front-Desk Management System
+            Enterprise Multi-Tenant Hotel Management & Front-Desk SaaS Platform
           </p>
-          <div className="mt-3 inline-block bg-teal-900/60 text-teal-300 border border-teal-700/60 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide">
-            Ujjain, Madhya Pradesh
+          <div className="mt-3 flex items-center justify-center gap-2">
+            <span className="bg-teal-900/60 text-teal-300 border border-teal-700/60 px-3 py-0.5 rounded-full text-[11px] font-semibold tracking-wide">
+              Multi-Hotel Enabled
+            </span>
+            <span className="bg-slate-800 text-slate-300 border border-slate-700 px-3 py-0.5 rounded-full text-[11px] font-semibold">
+              MySQL Database Live
+            </span>
           </div>
         </div>
 
@@ -76,21 +87,47 @@ export const Login: React.FC = () => {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                onClick={() => fillCredentials('superadmin')}
+                className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
+                  email === 'superadmin@pms.com'
+                    ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span className="block font-bold">Platform Super Admin</span>
+                <span className="text-[10px] opacity-80 block truncate">All Hotels & SaaS</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => fillCredentials('owner')}
-                className={`py-2 px-3 rounded-lg text-xs font-semibold border transition text-left ${
+                className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
                   email === 'owner@ujjainstay.demo'
                     ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <span className="block font-bold">Owner / Admin</span>
-                <span className="text-[10px] opacity-80 block truncate">Full Privileges</span>
+                <span className="block font-bold">Hotel 1 (UjjainStay)</span>
+                <span className="text-[10px] opacity-80 block truncate">Ujjain Property</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fillCredentials('shanti_owner')}
+                className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
+                  email === 'owner@shantipalace.demo'
+                    ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span className="block font-bold">Hotel 2 (Shanti Palace)</span>
+                <span className="text-[10px] opacity-80 block truncate">Indore Property</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => fillCredentials('receptionist')}
-                className={`py-2 px-3 rounded-lg text-xs font-semibold border transition text-left ${
+                className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition text-left ${
                   email === 'reception@ujjainstay.demo'
                     ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import {
   User,
   Role,
+  Hotel,
   HotelSettings,
   RoomType,
   Room,
@@ -35,6 +36,14 @@ interface HotelContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   hasRole: (role: Role) => boolean;
+
+  // Multi-Tenancy
+  hotels: Hotel[];
+  currentHotel: Hotel | null;
+  activeHotelId: string;
+  switchHotel: (hotelId: string) => Promise<void>;
+  createHotel: (hotelData: any) => Promise<{ success: boolean; message: string; hotel?: Hotel }>;
+  updateHotel: (id: string, updates: Partial<Hotel>) => Promise<void>;
 
   // DB Connection status
   isConnectedToDb: boolean;
@@ -143,6 +152,12 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const [isConnectedToDb, setIsConnectedToDb] = useState<boolean>(false);
 
+  // Multi-tenant state
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [activeHotelId, setActiveHotelId] = useState<string>(() => {
+    return localStorage.getItem('ujjainstay_active_hotel_id') || 'hotel_ujjain_01';
+  });
+
   const [hotelSettings, setHotelSettings] = useState<HotelSettings>(() =>
     loadFromStorage<HotelSettings>(STORAGE_KEYS.SETTINGS, initialHotelSettings)
   );
@@ -187,6 +202,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const refreshData = useCallback(async () => {
     try {
       const [
+        hotelsRes,
         settingsRes,
         roomTypesRes,
         roomsRes,
@@ -198,6 +214,7 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         staffRes,
         activityLogsRes,
       ] = await Promise.all([
+        api.get<{ success: boolean; hotels: Hotel[] }>('/hotels').catch(() => null),
         api.get<{ success: boolean; settings: HotelSettings }>('/settings').catch(() => null),
         api.get<{ success: boolean; roomTypes: RoomType[] }>('/room-types').catch(() => null),
         api.get<{ success: boolean; rooms: Room[] }>('/rooms').catch(() => null),
@@ -210,6 +227,9 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         api.get<{ success: boolean; activityLogs: ActivityLog[] }>('/activity-logs').catch(() => null),
       ]);
 
+      if (hotelsRes?.hotels) {
+        setHotels(hotelsRes.hotels);
+      }
       if (settingsRes?.settings) {
         setHotelSettings(settingsRes.settings);
         localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settingsRes.settings));
@@ -259,6 +279,39 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
+  // Multi-Tenancy helpers
+  const currentHotel = useMemo(() => {
+    return hotels.find(h => h.id === activeHotelId) || hotels[0] || null;
+  }, [hotels, activeHotelId]);
+
+  const switchHotel = useCallback(async (hotelId: string) => {
+    localStorage.setItem('ujjainstay_active_hotel_id', hotelId);
+    setActiveHotelId(hotelId);
+    await refreshData();
+  }, [refreshData]);
+
+  const createHotel = useCallback(async (hotelData: any) => {
+    try {
+      const res = await api.post<{ success: boolean; message: string; hotel: Hotel }>('/hotels', hotelData);
+      if (res.success) {
+        await refreshData();
+        return res;
+      }
+      return { success: false, message: res.message || 'Failed to onboard hotel' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Error onboarding hotel' };
+    }
+  }, [refreshData]);
+
+  const updateHotel = useCallback(async (id: string, updates: Partial<Hotel>) => {
+    try {
+      await api.put(`/hotels/${id}`, updates);
+      await refreshData();
+    } catch (err) {
+      console.warn('Update hotel error:', err);
+    }
+  }, [refreshData]);
+
   // Initial load from MySQL on mount
   useEffect(() => {
     refreshData();
@@ -298,17 +351,45 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // First attempt real database login via backend
     try {
-      const res = await api.post<{ success: boolean; message: string; user?: User }>('/auth/login', {
+      const res = await api.post<{
+        success: boolean;
+        message: string;
+        user?: User;
+        activeHotelId?: string;
+        hotels?: Hotel[];
+      }>('/auth/login', {
         email: cleanEmail,
         password: pass,
       });
       if (res.success && res.user) {
         setCurrentUser(res.user);
+        if (res.user.hotelId) {
+          localStorage.setItem('ujjainstay_active_hotel_id', res.user.hotelId);
+          setActiveHotelId(res.user.hotelId);
+        }
+        if (res.hotels) {
+          setHotels(res.hotels);
+        }
+        await refreshData();
         addActivityLog('User Login', 'Auth', res.user.id, `${res.user.name} signed in via MySQL database`);
         return { success: true, message: `Welcome back, ${res.user.name}!` };
       }
     } catch {
       // Fallback to local credential matching
+    }
+
+    if (cleanEmail === 'superadmin@pms.com' && (pass === 'Super@123' || pass === 'Demo@123')) {
+      const superAdminUser: User = {
+        id: 'usr_superadmin',
+        name: 'Pankesh Platform Admin',
+        email: 'superadmin@pms.com',
+        role: 'superadmin',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        allowedHotels: 'all',
+      };
+      setCurrentUser(superAdminUser);
+      addActivityLog('User Login', 'Auth', superAdminUser.id, `${superAdminUser.name} signed in as Super Admin`);
+      return { success: true, message: `Welcome back, ${superAdminUser.name} (Platform Admin)!` };
     }
 
     if (cleanEmail === 'owner@ujjainstay.demo' && pass === 'Owner@123') {
@@ -335,7 +416,8 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const hasRole = (role: Role): boolean => {
     if (!currentUser) return false;
-    if (currentUser.role === 'owner') return true;
+    if (currentUser.role === 'superadmin') return true;
+    if (role === 'owner') return currentUser.role === 'owner';
     return currentUser.role === role;
   };
 
@@ -1008,6 +1090,12 @@ export const HotelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         login,
         logout,
         hasRole,
+        hotels,
+        currentHotel,
+        activeHotelId,
+        switchHotel,
+        createHotel,
+        updateHotel,
         isConnectedToDb,
         refreshData,
         hotelSettings,

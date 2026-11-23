@@ -3,12 +3,14 @@ import { query } from '../db.js';
 
 const router = Router();
 
-// GET all rooms
+// GET all rooms for current tenant
 router.get('/', async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM rooms ORDER BY floor ASC, room_number ASC');
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
+    const rows = await query('SELECT * FROM rooms WHERE hotel_id = ? ORDER BY floor ASC, room_number ASC', [hotelId]);
     const rooms = rows.map(r => ({
       id: r.id,
+      hotelId: r.hotel_id,
       roomNumber: r.room_number,
       roomTypeId: r.room_type_id,
       floor: r.floor,
@@ -25,39 +27,41 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST add room
+// POST add room for current tenant
 router.post('/', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const { roomNumber, roomTypeId, floor, status, housekeepingStatus, maintenanceNotes } = req.body;
     if (!roomNumber || !roomTypeId) {
       return res.status(400).json({ success: false, message: 'Room number and room type are required.' });
     }
 
-    const existing = await query('SELECT id FROM rooms WHERE room_number = ?', [roomNumber]);
+    const existing = await query('SELECT id FROM rooms WHERE hotel_id = ? AND room_number = ?', [hotelId, roomNumber]);
     if (existing.length > 0) {
-      return res.status(409).json({ success: false, message: `Room ${roomNumber} already exists.` });
+      return res.status(409).json({ success: false, message: `Room ${roomNumber} already exists in this hotel.` });
     }
 
-    const id = String(roomNumber);
+    const id = `${hotelId}_${roomNumber}`;
     await query(`
-      INSERT INTO rooms (id, room_number, room_type_id, floor, status, housekeeping_status, maintenance_notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO rooms (id, hotel_id, room_number, room_type_id, floor, status, housekeeping_status, maintenance_notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id, roomNumber, roomTypeId, floor || 1, status || 'Available',
+      id, hotelId, roomNumber, roomTypeId, floor || 1, status || 'Available',
       housekeepingStatus || 'Clean', maintenanceNotes || null
     ]);
 
     // Activity log
     await query(`
-      INSERT INTO activity_logs (id, timestamp, user_name, action, entity_type, entity_id, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO activity_logs (id, hotel_id, timestamp, user_name, action, entity_type, entity_id, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      `LOG-${Date.now()}`, new Date().toISOString().replace('T', ' ').slice(0, 16),
+      `LOG-${Date.now()}`, hotelId, new Date().toISOString().replace('T', ' ').slice(0, 16),
       'Admin', 'Room Created', 'Room', roomNumber, `Added new room ${roomNumber} to inventory.`
     ]);
 
     const newRoom = {
       id,
+      hotelId,
       roomNumber,
       roomTypeId,
       floor: floor || 1,
@@ -75,6 +79,7 @@ router.post('/', async (req, res) => {
 // PUT update room
 router.put('/:id', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const { id } = req.params;
     const updates = req.body;
 
@@ -92,8 +97,10 @@ router.put('/:id', async (req, res) => {
     if (updates.maintenanceNotes !== undefined) { fields.push('maintenance_notes = ?'); values.push(updates.maintenanceNotes); }
 
     if (fields.length > 0) {
-      values.push(id);
-      await query(`UPDATE rooms SET ${fields.join(', ')} WHERE id = ?`, values);
+      values.push(id, hotelId);
+      await query(`UPDATE rooms SET ${fields.join(', ')} WHERE (id = ? OR room_number = ?) AND hotel_id = ?`, [
+        ...values.slice(0, -2), id, id, hotelId
+      ]);
     }
 
     return res.json({ success: true, message: `Room ${id} updated successfully.` });
@@ -105,8 +112,9 @@ router.put('/:id', async (req, res) => {
 // DELETE room
 router.delete('/:id', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const { id } = req.params;
-    const rooms = await query('SELECT * FROM rooms WHERE id = ?', [id]);
+    const rooms = await query('SELECT * FROM rooms WHERE (id = ? OR room_number = ?) AND hotel_id = ?', [id, id, hotelId]);
     if (rooms.length === 0) {
       return res.status(404).json({ success: false, message: 'Room not found.' });
     }
@@ -119,7 +127,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    await query('DELETE FROM rooms WHERE id = ?', [id]);
+    await query('DELETE FROM rooms WHERE id = ? AND hotel_id = ?', [room.id, hotelId]);
 
     return res.json({ success: true, message: `Room ${room.room_number} deleted successfully.` });
   } catch (err) {

@@ -3,12 +3,14 @@ import { query } from '../db.js';
 
 const router = Router();
 
-// GET all guests
+// GET all guests for current tenant
 router.get('/', async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM guests ORDER BY created_at DESC');
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
+    const rows = await query('SELECT * FROM guests WHERE hotel_id = ? ORDER BY created_at DESC', [hotelId]);
     const guests = rows.map(g => ({
       id: g.id,
+      hotelId: g.hotel_id,
       fullName: g.full_name,
       mobile: g.mobile,
       email: g.email,
@@ -32,9 +34,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST add guest
+// POST add guest for current tenant
 router.post('/', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const g = req.body;
     if (!g.fullName || !g.mobile) {
       return res.status(400).json({ success: false, message: 'Full name and mobile are required.' });
@@ -43,7 +46,7 @@ router.post('/', async (req, res) => {
     // Auto generate ID if not supplied
     let guestId = g.id;
     if (!guestId) {
-      const countRes = await query('SELECT COUNT(*) as count FROM guests');
+      const countRes = await query('SELECT COUNT(*) as count FROM guests WHERE hotel_id = ?', [hotelId]);
       const nextNum = (countRes[0].count + 1).toString().padStart(3, '0');
       guestId = `GST-${nextNum}`;
     }
@@ -52,17 +55,17 @@ router.post('/', async (req, res) => {
 
     await query(`
       INSERT INTO guests (
-        id, full_name, mobile, email, address, city, state, country,
+        id, hotel_id, full_name, mobile, email, address, city, state, country,
         id_document_type, id_document_number, id_verification_status, id_document_photo,
         emergency_contact, notes, total_stays, total_spent, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         full_name = VALUES(full_name),
         mobile = VALUES(mobile),
         email = VALUES(email),
         id_document_photo = IFNULL(VALUES(id_document_photo), id_document_photo)
     `, [
-      guestId, g.fullName, g.mobile, g.email || null, g.address || '', g.city || '', g.state || '', g.country || 'India',
+      guestId, hotelId, g.fullName, g.mobile, g.email || null, g.address || '', g.city || '', g.state || '', g.country || 'India',
       g.idDocumentType || 'Aadhaar', g.idDocumentNumber || '', g.idVerificationStatus || 'Pending',
       g.idDocumentPhoto || null, g.emergencyContact || null, g.notes || null,
       g.totalStays || 0, g.totalSpent || 0, createdAt
@@ -70,6 +73,7 @@ router.post('/', async (req, res) => {
 
     const created = {
       id: guestId,
+      hotelId,
       fullName: g.fullName,
       mobile: g.mobile,
       email: g.email || null,
@@ -97,34 +101,35 @@ router.post('/', async (req, res) => {
 // PUT update guest
 router.put('/:id', async (req, res) => {
   try {
+    const hotelId = req.hotelId || 'hotel_ujjain_01';
     const { id } = req.params;
-    const updates = req.body;
+    const g = req.body;
 
     const fields = [];
     const values = [];
 
-    if (updates.fullName !== undefined) { fields.push('full_name = ?'); values.push(updates.fullName); }
-    if (updates.mobile !== undefined) { fields.push('mobile = ?'); values.push(updates.mobile); }
-    if (updates.email !== undefined) { fields.push('email = ?'); values.push(updates.email); }
-    if (updates.address !== undefined) { fields.push('address = ?'); values.push(updates.address); }
-    if (updates.city !== undefined) { fields.push('city = ?'); values.push(updates.city); }
-    if (updates.state !== undefined) { fields.push('state = ?'); values.push(updates.state); }
-    if (updates.country !== undefined) { fields.push('country = ?'); values.push(updates.country); }
-    if (updates.idDocumentType !== undefined) { fields.push('id_document_type = ?'); values.push(updates.idDocumentType); }
-    if (updates.idDocumentNumber !== undefined) { fields.push('id_document_number = ?'); values.push(updates.idDocumentNumber); }
-    if (updates.idVerificationStatus !== undefined) { fields.push('id_verification_status = ?'); values.push(updates.idVerificationStatus); }
-    if (updates.idDocumentPhoto !== undefined) { fields.push('id_document_photo = ?'); values.push(updates.idDocumentPhoto); }
-    if (updates.emergencyContact !== undefined) { fields.push('emergency_contact = ?'); values.push(updates.emergencyContact); }
-    if (updates.notes !== undefined) { fields.push('notes = ?'); values.push(updates.notes); }
-    if (updates.totalStays !== undefined) { fields.push('total_stays = ?'); values.push(updates.totalStays); }
-    if (updates.totalSpent !== undefined) { fields.push('total_spent = ?'); values.push(updates.totalSpent); }
+    if (g.fullName !== undefined) { fields.push('full_name = ?'); values.push(g.fullName); }
+    if (g.mobile !== undefined) { fields.push('mobile = ?'); values.push(g.mobile); }
+    if (g.email !== undefined) { fields.push('email = ?'); values.push(g.email); }
+    if (g.address !== undefined) { fields.push('address = ?'); values.push(g.address); }
+    if (g.city !== undefined) { fields.push('city = ?'); values.push(g.city); }
+    if (g.state !== undefined) { fields.push('state = ?'); values.push(g.state); }
+    if (g.country !== undefined) { fields.push('country = ?'); values.push(g.country); }
+    if (g.idDocumentType !== undefined) { fields.push('id_document_type = ?'); values.push(g.idDocumentType); }
+    if (g.idDocumentNumber !== undefined) { fields.push('id_document_number = ?'); values.push(g.idDocumentNumber); }
+    if (g.idVerificationStatus !== undefined) { fields.push('id_verification_status = ?'); values.push(g.idVerificationStatus); }
+    if (g.idDocumentPhoto !== undefined) { fields.push('id_document_photo = ?'); values.push(g.idDocumentPhoto); }
+    if (g.emergencyContact !== undefined) { fields.push('emergency_contact = ?'); values.push(g.emergencyContact); }
+    if (g.notes !== undefined) { fields.push('notes = ?'); values.push(g.notes); }
+    if (g.totalStays !== undefined) { fields.push('total_stays = ?'); values.push(g.totalStays); }
+    if (g.totalSpent !== undefined) { fields.push('total_spent = ?'); values.push(g.totalSpent); }
 
     if (fields.length > 0) {
-      values.push(id);
-      await query(`UPDATE guests SET ${fields.join(', ')} WHERE id = ?`, values);
+      values.push(id, hotelId);
+      await query(`UPDATE guests SET ${fields.join(', ')} WHERE id = ? AND hotel_id = ?`, values);
     }
 
-    return res.json({ success: true, message: `Guest ${id} updated successfully.` });
+    return res.json({ success: true, message: `Guest ${id} updated` });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

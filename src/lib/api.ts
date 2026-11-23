@@ -22,6 +22,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers.set('Content-Type', 'application/json');
   }
 
+  // Multi-tenant header
+  const activeHotelId = localStorage.getItem('ujjainstay_active_hotel_id') || 'hotel_ujjain_01';
+  if (!headers.has('x-hotel-id')) {
+    headers.set('x-hotel-id', activeHotelId);
+  }
+
   try {
     const res = await fetch(url, {
       ...options,

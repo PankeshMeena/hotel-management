@@ -1,4 +1,30 @@
-export type Role = 'owner' | 'receptionist';
+export type Role = 'superadmin' | 'owner' | 'receptionist';
+
+export interface Hotel {
+  id: string;
+  name: string;
+  code: string;
+  tagline?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  gstin?: string;
+  currency?: string;
+  currencySymbol?: string;
+  status: 'Active' | 'Inactive' | 'Trial';
+  subscriptionPlan: 'Starter' | 'Pro' | 'Enterprise';
+  logo?: string;
+  totalRooms?: number;
+  occupiedRooms?: number;
+  occupancyPercent?: number;
+  activeBookings?: number;
+  totalRevenue?: number;
+  createdAt?: string;
+}
 
 export interface User {
   id: string;
@@ -6,6 +32,8 @@ export interface User {
   email: string;
   role: Role;
   avatar: string;
+  hotelId?: string;
+  allowedHotels?: string[] | 'all';
 }
 
 export interface HotelSettings {
