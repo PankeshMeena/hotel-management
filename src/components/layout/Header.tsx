@@ -149,29 +149,6 @@ export const Header: React.FC<HeaderProps> = ({
   const hasResults =
     filteredGuests.length > 0 || filteredReservations.length > 0 || filteredRooms.length > 0;
 
-  // Demo Switch Role shortcut within the active hotel
-  const handleSwitchRole = (targetRole: 'owner' | 'receptionist') => {
-    const isShanti = currentHotel?.id === 'hotel_shanti_02';
-    if (targetRole === 'owner') {
-      if (isShanti) {
-        login('owner@shantipalace.demo', 'Owner@123');
-        success('Switched to Shanti Palace Owner (Vikram Sharma)');
-      } else {
-        login('owner@ujjainstay.demo', 'Owner@123');
-        success('Switched to UjjainStay Owner (Rajesh Sharma)');
-      }
-    } else {
-      if (isShanti) {
-        login('reception@shantipalace.demo', 'Reception@123');
-        success('Switched to Shanti Palace Receptionist (Neha Verma)');
-      } else {
-        login('reception@ujjainstay.demo', 'Reception@123');
-        success('Switched to UjjainStay Receptionist (Pooja Sharma)');
-      }
-    }
-    setShowProfileMenu(false);
-  };
-
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs no-print">
       <div className="flex items-center justify-between h-14 sm:h-16 px-4 sm:px-6 gap-4">
@@ -427,47 +404,16 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-xs sm:w-64 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-xs sm:w-60 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="px-2 py-1.5 border-b border-slate-100 mb-2">
                   <p className="text-xs font-bold text-slate-900">{currentUser?.name}</p>
-                  <p className="text-[11px] text-slate-500">{currentUser?.email}</p>
+                  <p className="text-[11px] text-slate-500 truncate">{currentUser?.email}</p>
                   <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
                     isSuperAdmin ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'
                   }`}>
                     {isSuperAdmin ? 'Platform Super Admin' : `Role: ${currentUser?.role}`}
                   </span>
                 </div>
-
-                {/* Quick Role Switcher - ONLY for individual hotel operations */}
-                {!isSuperAdmin && (
-                  <div className="p-2 bg-slate-50 rounded-xl mb-2 border border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                      Switch Demo Persona:
-                    </span>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button
-                        onClick={() => handleSwitchRole('owner')}
-                        className={`text-xs font-semibold py-1.5 px-2 rounded-lg border text-center transition ${
-                          currentUser?.role === 'owner'
-                            ? 'bg-teal-600 text-white border-teal-700'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        Owner
-                      </button>
-                      <button
-                        onClick={() => handleSwitchRole('receptionist')}
-                        className={`text-xs font-semibold py-1.5 px-2 rounded-lg border text-center transition ${
-                          currentUser?.role === 'receptionist'
-                            ? 'bg-teal-600 text-white border-teal-700'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        Receptionist
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <button
                   onClick={() => {

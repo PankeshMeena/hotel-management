@@ -42,25 +42,10 @@ export const StaffPage: React.FC = () => {
         <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
           <ShieldAlert className="w-6 h-6" />
         </div>
-        <h2 className="text-lg font-bold text-slate-900">Owner Authorization Required</h2>
-        <p className="text-xs text-slate-500 mt-1 mb-5 leading-relaxed">
-          The Staff Management console is restricted to Hotel Owners and General Managers. Receptionists cannot modify user permissions or staff directories.
+        <h2 className="text-lg font-bold text-slate-900">Owner Access Required</h2>
+        <p className="text-xs text-slate-500 mt-1 mb-2 leading-relaxed">
+          The Staff Management console is restricted to Hotel Owners. Receptionist accounts do not have permission to view or manage staff directories.
         </p>
-        <button
-          onClick={() => {
-            const isShanti = currentHotel?.id === 'hotel_shanti_02';
-            if (isShanti) {
-              login('owner@shantipalace.demo', 'Owner@123');
-              success('Switched to Shanti Palace Owner session (Vikram Sharma)');
-            } else {
-              login('owner@ujjainstay.demo', 'Owner@123');
-              success('Switched to UjjainStay Owner session (Rajesh Sharma)');
-            }
-          }}
-          className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs"
-        >
-          Switch to Owner Demo Account
-        </button>
       </div>
     );
   }
